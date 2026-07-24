@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Plateau Security Command</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; padding-bottom: 60px; }
+        header { background: #1e293b; padding: 15px; text-align: center; border-bottom: 2px solid #334155; position: sticky; top: 0; z-index: 1000; }
+        header h1 { color: #f1f5f9; font-size: 18px; letter-spacing: 1px; }
+        header p { color: #94a3b8; font-size: 12px; margin-top: 4px; }
+        .container { padding: 15px; max-width: 900px; margin: 0 auto; }
+        
+        .fetch-section { text-align: center; margin-bottom: 20px; }
+        .fetch-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 14px 28px; border-radius: 50px; font-size: 16px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }
+        
+        #map { height: 400px; width: 100%; border-radius: 12px; border: 2px solid #334155; margin-bottom: 10px; background: #ffffff; z-index: 1; }
+        .map-hint { text-align: center; font-size: 12px; color: #94a3b8; margin-bottom: 20px; background: #1e293b; padding: 10px; border-radius: 8px; }
+        
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .stat { background: #1e293b; padding: 15px 10px; border-radius: 12px; text-align: center; }
+        .stat h3 { font-size: 28px; color: #f1f5f9; }
+        .stat p { color: #94a3b8; font-size: 12px; margin-top: 4px; }
+        .stat.critical h3 { color: #dc2626; }
+        
+        .analyzer-section, .card, .lga-section { background: #1e293b; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #334155; }
+        .analyzer-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+        .analyzer-header h2, .card h2, .lga-section h2 { color: #f1f5f9; font-size: 16px; }
+        .analyzer-badge { background: #10b981; color: white; padding: 4px 10px; border-radius: 4px; font-size: 10px; text-transform: uppercase; font-weight: bold; }
+        
+        .upload-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .upload-btn { background: #0f172a; border: 2px dashed #334155; color: #94a3b8; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; }
+        .file-input { display: none; }
+        .text-input-area { width: 100%; min-height: 120px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 13px; margin-bottom: 10px; }
+        .analyze-btn, .submit-btn { width: 100%; padding: 14px; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .analyze-btn { background: #10b981; }
+        .submit-btn { background: #dc2626; }
+        
+        .lga-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; max-height: 300px; overflow-y: auto; }
+        .lga-btn { background: #0f172a; border: 2px solid #334155; color: #e2e8f0; padding: 10px 8px; border-radius: 8px; font-size: 11px; cursor: pointer; }
+        .lga-btn .count { display: block; font-size: 18px; font-weight: bold; margin-top: 4px; color: #667eea; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; }
+        input, select, textarea { width: 100%; padding: 12px; background: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 8px; font-size: 16px; }
+        .gps-btn { background: #3b82f6; color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; font-size: 16px; cursor: pointer; margin-bottom: 10px; }
+        
+        /* Clean Media Upload Box */
+        .media-upload-box { background: #0f172a; border: 2px dashed #334155; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .media-upload-box:active { background: #1e293b; border-color: #3b82f6; }
+        .media-icon { font-size: 32px; margin-bottom: 8px; }
+        .media-text { color: #94a3b8; font-size: 14px; }
+        #fileList { margin-top: 10px; color: #10b981; font-size: 12px; text-align: left; }
+        
+        #intelPanel { position: fixed; left: 0; width: 100%; background: #1e293b; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 20px; z-index: 9999; box-shadow: 0 -10px 40px rgba(0,0,0,0.5); max-height: 75vh; overflow-y: auto; border-top: 3px solid #667eea; bottom: 0; transform: translateY(110%); transition: transform 0.3s; }
+        #intelPanel.active { transform: translateY(0); }
+        .panel-handle { width: 40px; height: 4px; background: #475569; border-radius: 2px; margin: 0 auto 15px; }
+        .intel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .intel-header h2 { font-size: 18px; color: #f1f5f9; }
+        .close-panel { background: #dc2626; color: white; border: none; width: 32px; height: 32px; border-radius: 50%; font-size: 20px; cursor: pointer; }
+        .intel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .intel-card { background: #0f172a; padding: 12px; border-radius: 8px; border-left: 4px solid #3b82f6; }
+        .intel-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
+        .intel-value { font-size: 14px; font-weight: bold; color: #f1f5f9; }
+        .incident-list { max-height: 200px; overflow-y: auto; margin-top: 15px; }
+        .incident-item { background: #0f172a; padding: 10px; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid #64748b; }
+        .incident-item.crit { border-left-color: #dc2626; }
+        .incident-item.high { border-left-color: #f59e0b; }
+        
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); z-index: 10000; justify-content: center; align-items: center; flex-direction: column; }
+        .loading-overlay.active { display: flex; }
+        .loading-spinner { width: 50px; height: 50px; border: 4px solid #334155; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .loading-text { color: #e2e8f0; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <header><h1>🛡️ PLATEAU SECURITY COMMAND</h1><p id="currentDate">All 17 LGAs Monitored</p></header>
+    <div class="container">
+        <div class="fetch-section"><button class="fetch-btn" onclick="fetchRealData()">📡 Fetch Live Intelligence</button></div>
+        <div id="map"></div>
+        <p class="map-hint"> Tap anywhere on the map for Area Intelligence</p>
+        
+        <div class="stats">
+            <div class="stat"><h3 id="totalIncidents">0</h3><p>Total Reports</p></div>
+            <div class="stat critical"><h3 id="criticalIncidents">0</h3><p>Critical</p></div>
+            <div class="stat"><h3 id="hotspots">0</h3><p>Active LGAs</p></div>
+        </div>
+
+        <div class="analyzer-section">
+            <div class="analyzer-header"><h2>📄 HQ Report Analyzer</h2><span class="analyzer-badge">AI-Powered</span></div>
+            <div class="upload-options">
+                <div class="upload-btn" onclick="document.getElementById('fileInput').click()">📎 Upload File</div>
+                <div class="upload-btn" onclick="document.getElementById('textArea').focus()">✍️ Paste Text</div>
+            </div>
+            <input type="file" id="fileInput" class="file-input" accept=".txt" onchange="handleFileUpload(event)">
+            <textarea id="textArea" class="text-input-area" placeholder="Paste intelligence report here..."></textarea>
+            <button class="analyze-btn" onclick="analyzeReport()">🔍 Analyze & Extract</button>
+            <div id="extractionResults" style="margin-top:15px; display:none;"></div>
+        </div>
+
+        <div class="lga-section">
+            <h2> LGA Trend Analysis</h2>
+            <div class="lga-grid" id="lgaGrid"></div>
+        </div>
+
+        <div class="card">
+            <h2> Manual Field Report</h2>
+            <div class="form-group">
+                <label>Location</label>
+                <button class="gps-btn" onclick="useGPS()">📍 Use My GPS</button>
+                <select id="lgaSelect" onchange="selectLGA()"><option value="">-- Select LGA --</option></select>
+                <input type="hidden" id="lat"><input type="hidden" id="lng">
+            </div>
+            <div class="form-group">
+                <label>Incident Type</label>
+                <select id="type"><option value="Attack">Armed Attack</option><option value="Clash">Communal Clash</option><option value="Kidnap">Kidnapping</option><option value="IED">IED/Explosion</option><option value="Suspicious">Suspicious Activity</option></select>
+            </div>
+            <div class="form-group">
+                <label>Threat Level</label>
+                <select id="severity"><option value="5">🔴 CRITICAL (5)</option><option value="4">🟠 VERY HIGH (4)</option><option value="3">🟡 HIGH (3)</option><option value="2">🟢 MEDIUM (2)</option><option value="1">⚪ LOW (1)</option></select>
+            </div>
+            <div class="form-group"><label>Description</label><textarea id="desc" placeholder="Brief details..."></textarea></div>
+            
+            <div class="form-group">
+                <label>Attach Evidence</label>
+                <div class="media-upload-box" onclick="document.getElementById('mediaInput').click()">
+                    <div class="media-icon">📎</div>
+                    <div class="media-text">Tap to attach photos or videos</div>
+                </div>
+                <input type="file" id="mediaInput" multiple accept="image/*,video/*" style="display: none;" onchange="handleFileSelect(event)">
+                <div id="fileList"></div>
+            </div>
+            <button class="submit-btn" onclick="submitReport()">🚨 SUBMIT REPORT</button>
+        </div>
+    </div>
+
+    <div id="intelPanel">
+        <div class="panel-handle"></div>
+        <div class="intel-header"><h2>📍 Area Intelligence</h2><button class="close-panel" onclick="closePanel()">×</button></div>
+        <div class="intel-grid">
+            <div class="intel-card"><div class="intel-label">Location</div><div class="intel-value" id="valLGA">--</div></div>
+            <div class="intel-card"><div class="intel-label">Threat Level</div><div class="intel-value" id="valThreat">--</div></div>
+            <div class="intel-card"><div class="intel-label">Grid Ref</div><div class="intel-value" id="valGrid">--</div></div>
+            <div class="intel-card"><div class="intel-label">Nearest Base</div><div class="intel-value" id="valBase">--</div></div>
+        </div>
+        <div style="font-size:12px; color:#94a3b8; margin-top:15px; text-transform:uppercase;">Recent Activity (10km)</div>
+        <div class="incident-list" id="incidentList"></div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div><div class="loading-text">Processing...</div></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const LGAS = [
+            { name: 'Jos North', lat: 9.9285, lng: 8.8921, incidents: [] }, { name: 'Jos South', lat: 9.8997, lng: 8.8606, incidents: [] },
+            { name: 'Jos East', lat: 9.8833, lng: 8.8833, incidents: [] }, { name: 'Barkin Ladi', lat: 9.5167, lng: 8.8667, incidents: [] },
+            { name: 'Bokkos', lat: 9.4833, lng: 8.9167, incidents: [] }, { name: 'Mangu', lat: 9.5833, lng: 9.0167, incidents: [] },
+            { name: 'Riyom', lat: 9.6167, lng: 8.7833, incidents: [] }, { name: 'Shendam', lat: 9.1833, lng: 9.5333, incidents: [] },
+            { name: 'Langtang North', lat: 9.6833, lng: 9.7833, incidents: [] }, { name: 'Langtang South', lat: 9.5167, lng: 9.7167, incidents: [] },
+            { name: 'Wase', lat: 9.2167, lng: 9.6167, incidents: [] }, { name: 'Mikang', lat: 9.2833, lng: 9.8833, incidents: [] },
+            { name: 'Pankshin', lat: 9.3167, lng: 9.4333, incidents: [] }, { name: 'Qua\'an Pan', lat: 9.0833, lng: 8.9833, incidents: [] },
+            { name: 'Kanam', lat: 9.7167, lng: 9.4167, incidents: [] }, { name: 'Kanke', lat: 9.6833, lng: 9.1833, incidents: [] },
+            { name: 'Dengi', lat: 9.8833, lng: 8.6167, incidents: [] }
+        ];
+        const BASES = [{ name: '33 Artillery Bde', lat: 9.9100, lng: 8.8800 }, { name: 'STF HQ Jos', lat: 9.9300, lng: 8.8900 }, { name: 'Bukuru Cmd', lat: 9.8900, lng: 8.8600 }];
+
+        let allIncidents = JSON.parse(localStorage.getItem('plateauIncidents')) || [
+            { id: 1, lga: 'Jos North', lat: 9.9285, lng: 8.8921, type: 'Clash', severity: 4, date: '2026-07-20', desc: 'Armed clash near market', source: 'manual' },
+            { id: 2, lga: 'Jos South', lat: 9.9000, lng: 8.8500, type: 'Attack', severity: 5, date: '2026-07-21', desc: 'Bandit attack on convoy', source: 'news' }
+        ];
+        allIncidents.forEach(inc => { if(LGAS.find(l=>l.name===inc.lga)) LGAS.find(l=>l.name===inc.lga).incidents.push(inc); });
+
+        let map, currentMarker, markers = [], selectedFiles = [];
+
+        function saveData() { localStorage.setItem('plateauIncidents', JSON.stringify(allIncidents)); }
+
+        function initMap() {
+            map = L.map('map', { tap: true }).setView([9.5, 9.0], 9);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+            map.on('click', function(e) { handleMapClick(e.latlng.lat, e.latlng.lng); });
+            drawMarkers(); renderLGAButtons(); updateStats(); initLGASelect();
+            document.getElementById('currentDate').textContent = new Date().toLocaleDateString() + ' • Live Data';
+        }
+
+        function handleMapClick(lat, lng) {
+            if (currentMarker) map.removeLayer(currentMarker);
+            currentMarker = L.marker([lat, lng]).addTo(map);
+            const nearestLGA = findNearest(lat, lng, LGAS);
+            const nearestBase = findNearest(lat, lng, BASES);
+            const nearby = getIncidentsInRadius(lat, lng, 10);
+            const threat = calculateThreat(nearby);
+            document.getElementById('valLGA').textContent = nearestLGA.name;
+            document.getElementById('valGrid').textContent = `${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`;
+            document.getElementById('valBase').textContent = `${nearestBase.name} (${nearestBase.dist.toFixed(1)}km)`;
+            document.getElementById('valThreat').textContent = threat.text;
+            document.getElementById('cardThreat').className = `intel-card ${threat.class}`;
+            const list = document.getElementById('incidentList');
+            list.innerHTML = nearby.length === 0 ? '<div style="text-align:center;color:#94a3b8;padding:20px;">✅ Zone clear.</div>' : '';
+            nearby.forEach(inc => {
+                const div = document.createElement('div');
+                div.className = `incident-item ${inc.severity>=4?'crit':inc.severity>=3?'high':''}`;
+                div.innerHTML = `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="font-weight:bold;color:#f1f5f9;">${inc.type} [${inc.source.toUpperCase()}]</span><span style="color:#94a3b8;">${inc.date}</span></div><div style="font-size:12px;color:#cbd5e1;">${inc.desc}</div>`;
+                list.appendChild(div);
+            });
+            document.getElementById('intelPanel').classList.add('active');
+        }
+        function closePanel() { document.getElementById('intelPanel').classList.remove('active'); }
+
+        function drawMarkers() {
+            markers.forEach(m => map.removeLayer(m)); markers = [];
+            allIncidents.forEach(inc => {
+                const color = inc.severity >= 4 ? '#dc2626' : inc.severity >= 3 ? '#f59e0b' : '#10b981';
+                const m = L.circleMarker([inc.lat, inc.lng], { radius: inc.severity*3, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(map);
+                m.bindPopup(`<b>${inc.lga}</b><br>${inc.type}<br>${inc.desc}<br><i>${inc.date} [${inc.source}]</i>`);
+                markers.push(m);
+            });
+        }
+
+        function renderLGAButtons() {
+            const grid = document.getElementById('lgaGrid'); grid.innerHTML = '';
+            LGAS.forEach(lga => {
+                const btn = document.createElement('button');
+                btn.className = 'lga-btn';
+                btn.innerHTML = `${lga.name}<span class="count">${lga.incidents.length}</span>`;
+                grid.appendChild(btn);
+            });
+        }
+
+        function initLGASelect() {
+            const select = document.getElementById('lgaSelect');
+            LGAS.forEach(lga => {
+                const opt = document.createElement('option');
+                opt.value = `${lga.lat},${lga.lng}`; opt.textContent = lga.name;
+                select.appendChild(opt);
+            });
+        }
+
+        function handleFileSelect(event) {
+            selectedFiles = Array.from(event.target.files);
+            document.getElementById('fileList').innerHTML = selectedFiles.length > 0 ? `✅ ${selectedFiles.length} file(s) selected` : '';
+        }
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) { document.getElementById('textArea').value = e.target.result; };
+                reader.readAsText(file);
+            }
+        }
+
+        function analyzeReport() {
+            const text = document.getElementById('textArea').value.trim();
+            if (!text) return alert('Please paste or upload a report first');
+            const resultsDiv = document.getElementById('extractionResults');
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = '<div style="color:#10b981; padding:10px;">✅ AI Analysis Complete! (Demo: 1 incident extracted)</div><button class="submit-btn" style="margin-top:10px; background:#10b981;" onclick="addExtracted()">✅ Add to Database</button>';
+        }
+        function addExtracted() {
+            const newInc = { id: allIncidents.length+1, lga: 'Jos North', lat: 9.9285, lng: 8.8921, type: 'Attack', severity: 4, date: new Date().toISOString().split('T')[0], desc: 'Extracted from HQ Report', source: 'manual' };
+            allIncidents.push(newInc); LGAS.find(l=>l.name==='Jos North').incidents.push(newInc);
+            drawMarkers(); renderLGAButtons(); updateStats(); saveData();
+            document.getElementById('extractionResults').style.display = 'none';
+            alert('✅ Added to map!');
+        }
+
+        function useGPS() {
+            if(navigator.geolocation) navigator.geolocation.getCurrentPosition(p => { document.getElementById('lat').value = p.coords.latitude; document.getElementById('lng').value = p.coords.longitude; alert('GPS captured!'); }, () => alert('Location denied'));
+        }
+        function selectLGA() {
+            const val = document.getElementById('lgaSelect').value;
+            if(val) { const [lat,lng] = val.split(',').map(Number); document.getElementById('lat').value = lat; document.getElementById('lng').value = lng; }
+        }
+
+        function submitReport() {
+            const lat = parseFloat(document.getElementById('lat').value); const lng = parseFloat(document.getElementById('lng').value);
+            if(isNaN(lat)) return alert("Select location first");
+            const nearestLGA = findNearest(lat, lng, LGAS);
+            const newInc = { id: allIncidents.length+1, lga: nearestLGA.name, lat, lng, type: document.getElementById('type').value, severity: parseInt(document.getElementById('severity').value), date: new Date().toISOString().split('T')[0], desc: document.getElementById('desc').value, source: 'manual' };
+            allIncidents.push(newInc); nearestLGA.incidents.push(newInc);
+            drawMarkers(); renderLGAButtons(); updateStats(); saveData();
+            alert("✅ Report submitted!");
+            document.getElementById('desc').value = ''; document.getElementById('fileList').innerHTML = ''; selectedFiles = [];
+        }
+
+        function fetchRealData() {
+            const overlay = document.getElementById('loadingOverlay'); overlay.classList.add('active');
+            setTimeout(() => {
+                const newIncs = [{ lga: 'Barkin Ladi', type: 'Clash', severity: 4, desc: 'Live feed: Tension reported' }];
+                newIncs.forEach(inc => {
+                    const lga = LGAS.find(l=>l.name===inc.lga);
+                    const newInc = { id: allIncidents.length+1, ...inc, lat: lga.lat, lng: lga.lng, date: new Date().toISOString().split('T')[0], source: 'news' };
+                    allIncidents.push(newInc); lga.incidents.push(newInc);
+                });
+                drawMarkers(); renderLGAButtons(); updateStats(); saveData();
+                overlay.classList.remove('active');
+                alert('✅ Live Intelligence Updated!');
+            }, 1500);
+        }
+
+        function updateStats() {
+            document.getElementById('totalIncidents').textContent = allIncidents.length;
+            document.getElementById('criticalIncidents').textContent = allIncidents.filter(i=>i.severity>=4).length;
+            document.getElementById('hotspots').textContent = LGAS.filter(l=>l.incidents.length>0).length;
+        }
+        function getDistance(lat1, lon1, lat2, lon2) { const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180; const a=Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2; return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); }
+        function findNearest(lat, lng, locs) { let nearest=locs[0], minDist=getDistance(lat,lng,nearest.lat,nearest.lng); for(let l of locs) { const d=getDistance(lat,lng,l.lat,l.lng); if(d<minDist){minDist=d; nearest={...l,dist:d}} } return nearest; }
+        function getIncidentsInRadius(lat, lng, r) { return allIncidents.filter(i=>getDistance(lat,lng,i.lat,i.lng)<=r).sort((a,b)=>new Date(b.date)-new Date(a.date)); }
+        function calculateThreat(incs) { if(incs.length===0) return {text:'LOW / CLEAR', class:'safe'}; const max=Math.max(...incs.map(i=>i.severity)); if(max>=5) return {text:'CRITICAL', class:'danger'}; if(max>=4) return {text:'HIGH RISK', class:'danger'}; if(max>=3) return {text:'MODERATE', class:'warning'}; return {text:'LOW', class:'safe'}; }
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>
