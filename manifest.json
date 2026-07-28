@@ -1,1 +1,19 @@
 
+{
+  "name": "NSIRS — Plateau Security Command",
+  "short_name": "NSIRS",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0b0f12",
+  "background_color": "#0b0f12",
+  "categories": ["security", "utilities", "government"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230b0f12'/%3E%3Cpath d='M32 6 54 14v16c0 16-9 26-22 28C19 66 10 56 10 40V14z' fill='%23121a20' stroke='%2338c7b8' stroke-width='2'/%3E%3Ccircle cx='32' cy='34' r='10' fill='none' stroke='%2338c7b8' stroke-width='2'/%3E%3Cline x1='32' y1='20' x2='32' y2='48' stroke='%2338c7b8' stroke-width='1.5'/%3E%3Cline x1='18' y1='34' x2='46' y2='34' stroke='%2338c7b8' stroke-width='1.5'/%3E%3C/svg%3E",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}
