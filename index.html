@@ -1,317 +1,1112 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Plateau Security Command</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; padding-bottom: 60px; }
-        header { background: #1e293b; padding: 15px; text-align: center; border-bottom: 2px solid #334155; position: sticky; top: 0; z-index: 1000; }
-        header h1 { color: #f1f5f9; font-size: 18px; letter-spacing: 1px; }
-        header p { color: #94a3b8; font-size: 12px; margin-top: 4px; }
-        .container { padding: 15px; max-width: 900px; margin: 0 auto; }
-        
-        .fetch-section { text-align: center; margin-bottom: 20px; }
-        .fetch-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 14px 28px; border-radius: 50px; font-size: 16px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }
-        
-        #map { height: 400px; width: 100%; border-radius: 12px; border: 2px solid #334155; margin-bottom: 10px; background: #ffffff; z-index: 1; }
-        .map-hint { text-align: center; font-size: 12px; color: #94a3b8; margin-bottom: 20px; background: #1e293b; padding: 10px; border-radius: 8px; }
-        
-        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-        .stat { background: #1e293b; padding: 15px 10px; border-radius: 12px; text-align: center; }
-        .stat h3 { font-size: 28px; color: #f1f5f9; }
-        .stat p { color: #94a3b8; font-size: 12px; margin-top: 4px; }
-        .stat.critical h3 { color: #dc2626; }
-        
-        .analyzer-section, .card, .lga-section { background: #1e293b; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #334155; }
-        .analyzer-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
-        .analyzer-header h2, .card h2, .lga-section h2 { color: #f1f5f9; font-size: 16px; }
-        .analyzer-badge { background: #10b981; color: white; padding: 4px 10px; border-radius: 4px; font-size: 10px; text-transform: uppercase; font-weight: bold; }
-        
-        .upload-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .upload-btn { background: #0f172a; border: 2px dashed #334155; color: #94a3b8; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; }
-        .file-input { display: none; }
-        .text-input-area { width: 100%; min-height: 120px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 13px; margin-bottom: 10px; }
-        .analyze-btn, .submit-btn { width: 100%; padding: 14px; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .analyze-btn { background: #10b981; }
-        .submit-btn { background: #dc2626; }
-        
-        .lga-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; max-height: 300px; overflow-y: auto; }
-        .lga-btn { background: #0f172a; border: 2px solid #334155; color: #e2e8f0; padding: 10px 8px; border-radius: 8px; font-size: 11px; cursor: pointer; }
-        .lga-btn .count { display: block; font-size: 18px; font-weight: bold; margin-top: 4px; color: #667eea; }
-        
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; }
-        input, select, textarea { width: 100%; padding: 12px; background: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 8px; font-size: 16px; }
-        .gps-btn { background: #3b82f6; color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; font-size: 16px; cursor: pointer; margin-bottom: 10px; }
-        
-        /* Clean Media Upload Box */
-        .media-upload-box { background: #0f172a; border: 2px dashed #334155; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; transition: all 0.2s; }
-        .media-upload-box:active { background: #1e293b; border-color: #3b82f6; }
-        .media-icon { font-size: 32px; margin-bottom: 8px; }
-        .media-text { color: #94a3b8; font-size: 14px; }
-        #fileList { margin-top: 10px; color: #10b981; font-size: 12px; text-align: left; }
-        
-        #intelPanel { position: fixed; left: 0; width: 100%; background: #1e293b; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 20px; z-index: 9999; box-shadow: 0 -10px 40px rgba(0,0,0,0.5); max-height: 75vh; overflow-y: auto; border-top: 3px solid #667eea; bottom: 0; transform: translateY(110%); transition: transform 0.3s; }
-        #intelPanel.active { transform: translateY(0); }
-        .panel-handle { width: 40px; height: 4px; background: #475569; border-radius: 2px; margin: 0 auto 15px; }
-        .intel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .intel-header h2 { font-size: 18px; color: #f1f5f9; }
-        .close-panel { background: #dc2626; color: white; border: none; width: 32px; height: 32px; border-radius: 50%; font-size: 20px; cursor: pointer; }
-        .intel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .intel-card { background: #0f172a; padding: 12px; border-radius: 8px; border-left: 4px solid #3b82f6; }
-        .intel-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
-        .intel-value { font-size: 14px; font-weight: bold; color: #f1f5f9; }
-        .incident-list { max-height: 200px; overflow-y: auto; margin-top: 15px; }
-        .incident-item { background: #0f172a; padding: 10px; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid #64748b; }
-        .incident-item.crit { border-left-color: #dc2626; }
-        .incident-item.high { border-left-color: #f59e0b; }
-        
-        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); z-index: 10000; justify-content: center; align-items: center; flex-direction: column; }
-        .loading-overlay.active { display: flex; }
-        .loading-spinner { width: 50px; height: 50px; border: 4px solid #334155; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        .loading-text { color: #e2e8f0; font-size: 16px; }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NSIRS — Plateau Security Command</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0b0f12">
+<link id="favicon" rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230b0f12'/%3E%3Cpath d='M32 6 54 14v16c0 16-9 26-22 28C19 66 10 56 10 40V14z' fill='%23121a20' stroke='%2338c7b8' stroke-width='2'/%3E%3Ccircle cx='32' cy='34' r='10' fill='none' stroke='%2338c7b8' stroke-width='2'/%3E%3Cline x1='32' y1='20' x2='32' y2='48' stroke='%2338c7b8' stroke-width='1.5'/%3E%3Cline x1='18' y1='34' x2='46' y2='34' stroke='%2338c7b8' stroke-width='1.5'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230b0f12'/%3E%3Cpath d='M32 6 54 14v16c0 16-9 26-22 28C19 66 10 56 10 40V14z' fill='%23121a20' stroke='%2338c7b8' stroke-width='2'/%3E%3Ccircle cx='32' cy='34' r='10' fill='none' stroke='%2338c7b8' stroke-width='2'/%3E%3Cline x1='32' y1='20' x2='32' y2='48' stroke='%2338c7b8' stroke-width='1.5'/%3E%3Cline x1='18' y1='34' x2='46' y2='34' stroke='%2338c7b8' stroke-width='1.5'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800&family=Saira:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --ink:#0b0f12; --ink2:#0e1419; --panel:#121a20; --panel2:#16202a;
+  --line:#243240; --line2:#2f4150; --paper:#e9ede9; --mute:#8497a3;
+  --amber:#f0a93b; --teal:#38c7b8; --red:#e0533d; --ok:#5fcf80;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--ink);color:var(--paper);font-family:'Saira',sans-serif;}
+h1,h2,h3,.disp{font-family:'Saira Condensed',sans-serif;text-transform:uppercase;letter-spacing:.02em;font-weight:800;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+body{
+  background-image:
+    radial-gradient(circle at 15% 10%, rgba(56,199,184,.08), transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(224,83,61,.06), transparent 45%);
+  min-height:100vh;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.05;
+  background-image:repeating-radial-gradient(circle at 50% 0%, transparent 0 40px, var(--teal) 41px, transparent 42px);
+}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+.hidden{display:none !important;}
+
+/* ---------- classification banner ---------- */
+#banner{position:sticky;top:0;z-index:500;background:var(--ink2);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:12px;padding:6px 12px;font-size:11px;overflow:hidden;}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 1.4s infinite;flex:none;}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(224,83,61,.6)}50%{opacity:.4;box-shadow:0 0 0 5px rgba(224,83,61,0)}}
+.ticker-wrap{flex:1;overflow:hidden;white-space:nowrap;color:var(--mute);}
+.ticker{display:inline-block;padding-left:100%;animation:tick 22s linear infinite;}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+.chip{border:1px solid var(--line2);border-radius:3px;padding:2px 6px;color:var(--teal);white-space:nowrap;}
+.chip.off{color:var(--red);border-color:var(--red);}
+#sessSeg{display:flex;align-items:center;gap:8px;white-space:nowrap;color:var(--amber);}
+#sessSeg button{background:none;border:1px solid var(--line2);color:var(--paper);padding:2px 8px;border-radius:3px;font-size:10px;}
+#sessSeg button:active{transform:translate(1px,1px);}
+
+/* ---------- gate ---------- */
+#gate{position:fixed;inset:0;z-index:900;background:var(--ink);display:flex;align-items:center;justify-content:center;padding:20px;}
+.gate-card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:24px;position:relative;}
+.gate-card.shake{animation:shake .4s;}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+.corner{position:absolute;width:14px;height:14px;border:2px solid var(--teal);}
+.corner.tl{top:-1px;left:-1px;border-right:none;border-bottom:none;}
+.corner.tr{top:-1px;right:-1px;border-left:none;border-bottom:none;}
+.corner.bl{bottom:-1px;left:-1px;border-right:none;border-top:none;}
+.corner.br{bottom:-1px;right:-1px;border-left:none;border-top:none;}
+.gate-mark{text-align:center;margin-bottom:8px;}
+.gate-kicker{text-align:center;font-size:11px;color:var(--mute);letter-spacing:.15em;}
+.gate-warn{text-align:center;font-size:10px;color:var(--red);margin:6px 0 18px;letter-spacing:.05em;}
+.gate-card select{width:100%;background:var(--panel2);border:1px solid var(--line2);color:var(--paper);padding:10px;border-radius:4px;margin-bottom:14px;}
+.pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.pinpad button{background:var(--panel2);border:1px solid var(--line2);color:var(--paper);padding:14px 0;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:16px;}
+.pinpad button:active{transform:translate(2px,2px);background:var(--line);}
+.pindots{display:flex;justify-content:center;gap:10px;margin-bottom:14px;height:14px;}
+.pindots span{width:10px;height:10px;border-radius:50%;border:1px solid var(--line2);}
+.pindots span.filled{background:var(--teal);border-color:var(--teal);}
+#authBtn{width:100%;background:var(--teal);color:var(--ink);border:none;padding:12px;border-radius:4px;font-weight:700;letter-spacing:.05em;box-shadow:4px 4px 0 rgba(0,0,0,.45);}
+#authBtn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 rgba(0,0,0,.45);}
+.gate-lock{text-align:center;color:var(--red);font-size:11px;margin-top:10px;}
+
+/* ---------- masthead ---------- */
+#app{max-width:920px;margin:0 auto;padding:0 14px 60px;position:relative;z-index:1;}
+#masthead{padding:26px 0 10px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
+.kicker{font-size:11px;color:var(--mute);letter-spacing:.2em;margin-bottom:4px;}
+#masthead h1{font-size:38px;margin:0;line-height:1;}
+#masthead h1 .amber{color:var(--amber);}
+.sub{color:var(--mute);font-size:13px;margin-top:6px;}
+.radar{width:70px;height:70px;border-radius:50%;border:1px solid var(--line2);position:relative;flex:none;background:radial-gradient(circle, rgba(56,199,184,.06), transparent 70%);}
+.radar::before{content:'';position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg, rgba(56,199,184,.5), transparent 40%);
+  animation:spin 3s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.blip{position:absolute;width:5px;height:5px;border-radius:50%;background:var(--teal);}
+.blip.red{background:var(--red);animation:pulse 1.2s infinite;}
+
+/* ---------- action row ---------- */
+.actionrow{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 20px;}
+.btn{border:1px solid var(--line2);background:var(--panel2);color:var(--paper);padding:10px 14px;border-radius:4px;font-size:12px;letter-spacing:.04em;box-shadow:4px 4px 0 rgba(0,0,0,.45);display:flex;align-items:center;gap:6px;}
+.btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 rgba(0,0,0,.45);}
+.btn.primary{background:var(--teal);color:var(--ink);border-color:var(--teal);font-weight:700;}
+.btn.warn{background:var(--amber);color:var(--ink);border-color:var(--amber);font-weight:700;}
+.spinner{width:12px;height:12px;border:2px solid rgba(0,0,0,.2);border-top-color:currentColor;border-radius:50%;animation:spin .7s linear infinite;}
+
+/* ---------- panels ---------- */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;margin-bottom:18px;position:relative;opacity:0;transform:translateY(10px);transition:opacity .5s, transform .5s;}
+.panel.show{opacity:1;transform:translateY(0);}
+.panel h2{font-size:16px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+.badge{font-size:9px;background:var(--panel2);border:1px solid var(--line2);color:var(--teal);padding:2px 6px;border-radius:3px;letter-spacing:.05em;font-family:'IBM Plex Mono',monospace;text-transform:none;font-weight:600;}
+
+/* map */
+#mapshell{background:#fff;border-radius:6px;height:420px;position:relative;overflow:hidden;margin-bottom:6px;border:1px solid var(--line);}
+#map{width:100%;height:100%;}
+.scanline{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg, transparent, var(--teal), transparent);opacity:.7;animation:scan 4s linear infinite;pointer-events:none;z-index:400;}
+@keyframes scan{0%{top:0}100%{top:100%}}
+.maphint{font-size:11px;color:var(--mute);margin:0 0 18px;}
+#mapfallback{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:var(--panel);color:var(--mute);gap:6px;}
+#mapfallback.show{display:flex;}
+#mapfallback b{color:var(--amber);letter-spacing:.1em;font-family:'IBM Plex Mono',monospace;font-size:12px;}
+
+/* stats strip */
+.stats{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-bottom:18px;}
+.stat{flex:1;padding:14px 10px;text-align:center;border-right:1px solid var(--line);}
+.stat:last-child{border-right:none;}
+.stat.crit{background:rgba(224,83,61,.08);}
+.stat.act{background:rgba(56,199,184,.08);}
+.stat .num{font-family:'Saira Condensed',sans-serif;font-weight:800;font-size:34px;line-height:1;}
+.stat .lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--mute);letter-spacing:.1em;margin-top:4px;}
+
+/* LGA grid */
+.lgagrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;}
+.lgacard{background:var(--panel2);border:1px solid var(--line2);border-left:3px solid var(--line2);border-radius:4px;padding:10px;cursor:pointer;transition:transform .15s, border-color .15s;}
+.lgacard:hover{transform:translateY(-2px);border-left-color:var(--teal);}
+.lgacard.hot{border-left-color:var(--red);}
+.lgacard .name{font-size:12px;font-weight:600;}
+.lgacard .cnt{font-family:'IBM Plex Mono',monospace;font-size:18px;margin-top:4px;}
+.lgacard.hot .cnt{color:var(--red);}
+
+/* forms */
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:10px;color:var(--mute);font-family:'IBM Plex Mono',monospace;letter-spacing:.08em;margin-bottom:4px;}
+.field input,.field select,.field textarea{width:100%;background:var(--panel2);border:1px solid var(--line2);color:var(--paper);padding:9px 10px;border-radius:4px;font-size:13px;}
+.field textarea{resize:vertical;min-height:70px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* analyzer extraction cards */
+.excard{background:var(--panel2);border:1px solid var(--line2);border-radius:4px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.sevbadge{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:2px 6px;border-radius:3px;flex:none;}
+.sev5{background:var(--red);color:#fff;} .sev4{background:var(--amber);color:#1a1200;}
+.sev3{background:var(--line2);color:var(--paper);} .sev2{background:var(--ok);color:#04210f;}
+
+/* audit console */
+.audit-filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+.audit-filters select,.audit-filters input{background:var(--panel2);border:1px solid var(--line2);color:var(--paper);padding:6px 8px;border-radius:4px;font-size:11px;}
+.integrity{padding:6px 10px;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:11px;margin-bottom:10px;display:inline-block;}
+.integrity.ok{background:rgba(95,207,128,.15);color:var(--ok);border:1px solid var(--ok);}
+.integrity.bad{background:rgba(224,83,61,.15);color:var(--red);border:1px solid var(--red);}
+.ledger{max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:4px;}
+.ledger table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:10px;}
+.ledger th,.ledger td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;}
+.ledger th{position:sticky;top:0;background:var(--panel2);color:var(--mute);}
+
+/* bottom sheet */
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:600;background:var(--panel);border-top:1px solid var(--line);border-radius:12px 12px 0 0;
+  transform:translateY(100%);transition:transform .3s;max-height:75vh;overflow-y:auto;padding:16px;box-shadow:0 -8px 24px rgba(0,0,0,.5);}
+#sheet.show{transform:translateY(0);}
+.sheetgrab{width:36px;height:4px;background:var(--line2);border-radius:2px;margin:0 auto 12px;}
+.threatcard{padding:12px;border-radius:6px;margin:10px 0;font-family:'IBM Plex Mono',monospace;font-size:12px;}
+.threatcard.CRITICAL{background:rgba(224,83,61,.15);color:var(--red);border:1px solid var(--red);}
+.threatcard.HIGH{background:rgba(240,169,59,.15);color:var(--amber);border:1px solid var(--amber);}
+.threatcard.MODERATE{background:rgba(240,169,59,.08);color:var(--amber);border:1px solid var(--line2);}
+.threatcard.LOW{background:rgba(95,207,128,.1);color:var(--ok);border:1px solid var(--ok);}
+
+/* modals */
+.modal-bg{position:fixed;inset:0;z-index:800;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px;}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:8px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;padding:20px;position:relative;}
+.modal .x{position:absolute;top:12px;right:12px;background:none;border:none;color:var(--mute);font-size:18px;}
+
+/* toasts */
+#toastwrap{position:fixed;bottom:20px;left:0;right:0;z-index:1000;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
+.toast{background:var(--panel2);border:1px solid var(--line2);color:var(--paper);padding:10px 16px;border-radius:6px;font-size:12px;
+  transform:translateY(20px);opacity:0;transition:all .3s;font-family:'IBM Plex Mono',monospace;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.err{border-color:var(--red);color:var(--red);}
+.toast.ok{border-color:var(--ok);color:var(--ok);}
+.toast.flash{border-color:var(--red);background:rgba(224,83,61,.15);color:var(--red);font-weight:700;}
+
+/* processing overlay */
+#processing{position:fixed;inset:0;z-index:950;background:rgba(11,15,18,.85);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
+#processing.show{display:flex;}
+.bigspin{width:34px;height:34px;border:3px solid var(--line2);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite;}
+
+/* lock overlay */
+#lockover{position:fixed;inset:0;z-index:940;background:var(--ink);display:none;align-items:center;justify-content:center;}
+#lockover.show{display:flex;}
+
+/* flash indicator */
+#flashind{display:none;align-items:center;gap:4px;color:var(--red);font-weight:700;}
+#flashind.show{display:flex;}
+
+/* dossier + print */
+#dossier{background:#fff;color:#111;padding:20px;font-family:'IBM Plex Mono',monospace;font-size:11px;}
+#dossier h3{font-family:'Saira Condensed',sans-serif;font-size:16px;margin:14px 0 6px;text-transform:uppercase;}
+.dhead{border:2px solid #111;padding:8px;text-align:center;font-weight:700;letter-spacing:.1em;margin-bottom:10px;}
+.dtable{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:10px;}
+.dtable th,.dtable td{border:1px solid #999;padding:4px 6px;text-align:left;}
+.dtable tr:nth-child(even){background:#f2f2f2;}
+.dgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
+.dgrid div{border:1px solid #ccc;padding:6px;}
+@media print{
+  body *{visibility:hidden;}
+  #dossier,#dossier *{visibility:visible;}
+  #dossier{position:absolute;left:0;top:0;width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  @page{size:A4;margin:14mm;}
+  .dtable tr,.dcard{page-break-inside:avoid;}
+}
+
+footer{text-align:center;color:var(--mute);font-size:10px;padding:20px 0;font-family:'IBM Plex Mono',monospace;}
+</style>
 </head>
 <body>
-    <header><h1>🛡️ PLATEAU SECURITY COMMAND</h1><p id="currentDate">All 17 LGAs Monitored</p></header>
-    <div class="container">
-        <div class="fetch-section"><button class="fetch-btn" onclick="fetchRealData()">📡 Fetch Live Intelligence</button></div>
-        <div id="map"></div>
-        <p class="map-hint"> Tap anywhere on the map for Area Intelligence</p>
-        
-        <div class="stats">
-            <div class="stat"><h3 id="totalIncidents">0</h3><p>Total Reports</p></div>
-            <div class="stat critical"><h3 id="criticalIncidents">0</h3><p>Critical</p></div>
-            <div class="stat"><h3 id="hotspots">0</h3><p>Active LGAs</p></div>
-        </div>
 
-        <div class="analyzer-section">
-            <div class="analyzer-header"><h2>📄 HQ Report Analyzer</h2><span class="analyzer-badge">AI-Powered</span></div>
-            <div class="upload-options">
-                <div class="upload-btn" onclick="document.getElementById('fileInput').click()">📎 Upload File</div>
-                <div class="upload-btn" onclick="document.getElementById('textArea').focus()">✍️ Paste Text</div>
-            </div>
-            <input type="file" id="fileInput" class="file-input" accept=".txt" onchange="handleFileUpload(event)">
-            <textarea id="textArea" class="text-input-area" placeholder="Paste intelligence report here..."></textarea>
-            <button class="analyze-btn" onclick="analyzeReport()">🔍 Analyze & Extract</button>
-            <div id="extractionResults" style="margin-top:15px; display:none;"></div>
-        </div>
+<div id="banner">
+  <span class="live-dot"></span>
+  <span class="mono">LIVE</span>
+  <div class="ticker-wrap"><span class="ticker mono" id="tickerText">NSIRS // PLATEAU STATE FIELD NET · 17 LGA COVERAGE · ALL SESSIONS AUDITED · TAMPER-EVIDENT LEDGER ACTIVE ·</span></div>
+  <span class="mono" id="clock">--:--:--</span>
+  <span class="chip" id="pwaChip">WEB • ONLINE</span>
+  <span id="sessSeg" class="hidden mono">
+    <span id="sessText">OP: — · CLR: — · SESSION 00:00:00</span>
+    <button id="lockBtn">LOCK</button>
+    <button id="logoutBtn">LOGOUT</button>
+  </span>
+</div>
 
-        <div class="lga-section">
-            <h2> LGA Trend Analysis</h2>
-            <div class="lga-grid" id="lgaGrid"></div>
-        </div>
-
-        <div class="card">
-            <h2> Manual Field Report</h2>
-            <div class="form-group">
-                <label>Location</label>
-                <button class="gps-btn" onclick="useGPS()">📍 Use My GPS</button>
-                <select id="lgaSelect" onchange="selectLGA()"><option value="">-- Select LGA --</option></select>
-                <input type="hidden" id="lat"><input type="hidden" id="lng">
-            </div>
-            <div class="form-group">
-                <label>Incident Type</label>
-                <select id="type"><option value="Attack">Armed Attack</option><option value="Clash">Communal Clash</option><option value="Kidnap">Kidnapping</option><option value="IED">IED/Explosion</option><option value="Suspicious">Suspicious Activity</option></select>
-            </div>
-            <div class="form-group">
-                <label>Threat Level</label>
-                <select id="severity"><option value="5">🔴 CRITICAL (5)</option><option value="4">🟠 VERY HIGH (4)</option><option value="3">🟡 HIGH (3)</option><option value="2">🟢 MEDIUM (2)</option><option value="1">⚪ LOW (1)</option></select>
-            </div>
-            <div class="form-group"><label>Description</label><textarea id="desc" placeholder="Brief details..."></textarea></div>
-            
-            <div class="form-group">
-                <label>Attach Evidence</label>
-                <div class="media-upload-box" onclick="document.getElementById('mediaInput').click()">
-                    <div class="media-icon">📎</div>
-                    <div class="media-text">Tap to attach photos or videos</div>
-                </div>
-                <input type="file" id="mediaInput" multiple accept="image/*,video/*" style="display: none;" onchange="handleFileSelect(event)">
-                <div id="fileList"></div>
-            </div>
-            <button class="submit-btn" onclick="submitReport()">🚨 SUBMIT REPORT</button>
-        </div>
+<!-- ============ GATE ============ -->
+<div id="gate">
+  <div class="gate-card" id="gateCard">
+    <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+    <div class="gate-mark">
+      <svg width="48" height="48" viewBox="0 0 64 64"><path d="M32 6 54 14v16c0 16-9 26-22 28C19 66 10 56 10 40V14z" fill="#121a20" stroke="#38c7b8" stroke-width="2"/><circle cx="32" cy="34" r="10" fill="none" stroke="#38c7b8" stroke-width="2"/><line x1="32" y1="20" x2="32" y2="48" stroke="#38c7b8" stroke-width="1.5"/><line x1="18" y1="34" x2="46" y2="34" stroke="#38c7b8" stroke-width="1.5"/></svg>
     </div>
+    <div class="gate-kicker mono">NSIRS // CREDENTIAL GATE</div>
+    <div class="gate-warn mono">AUTHORIZED PERSONNEL ONLY · ALL ACCESS LOGGED</div>
+    <select id="opSelect"></select>
+    <div class="pindots" id="pinDots"></div>
+    <div class="pinpad" id="pinPad"></div>
+    <button id="authBtn">AUTHENTICATE</button>
+    <div class="gate-lock mono hidden" id="gateLockMsg"></div>
+  </div>
+</div>
 
-    <div id="intelPanel">
-        <div class="panel-handle"></div>
-        <div class="intel-header"><h2>📍 Area Intelligence</h2><button class="close-panel" onclick="closePanel()">×</button></div>
-        <div class="intel-grid">
-            <div class="intel-card"><div class="intel-label">Location</div><div class="intel-value" id="valLGA">--</div></div>
-            <div class="intel-card"><div class="intel-label">Threat Level</div><div class="intel-value" id="valThreat">--</div></div>
-            <div class="intel-card"><div class="intel-label">Grid Ref</div><div class="intel-value" id="valGrid">--</div></div>
-            <div class="intel-card"><div class="intel-label">Nearest Base</div><div class="intel-value" id="valBase">--</div></div>
-        </div>
-        <div style="font-size:12px; color:#94a3b8; margin-top:15px; text-transform:uppercase;">Recent Activity (10km)</div>
-        <div class="incident-list" id="incidentList"></div>
+<!-- ============ LOCK OVERLAY ============ -->
+<div id="lockover">
+  <div class="gate-card">
+    <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+    <div class="gate-kicker mono">SESSION LOCKED · RE-ENTER PIN</div>
+    <div class="gate-warn mono" id="lockCallsign">OP: —</div>
+    <div class="pindots" id="lockPinDots"></div>
+    <div class="pinpad" id="lockPinPad"></div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+
+  <div id="masthead">
+    <div>
+      <div class="kicker mono">NIGERIA SECURITY INCIDENT REPORTING SYSTEM</div>
+      <h1>PLATEAU <span class="amber">/ COMMAND.</span></h1>
+      <div class="sub">Field intelligence console — 17 LGA coverage, Plateau State pilot.</div>
     </div>
+    <div class="radar">
+      <div class="blip" style="top:14px;left:40px;"></div>
+      <div class="blip" style="top:40px;left:18px;"></div>
+      <div class="blip red" style="top:44px;left:48px;"></div>
+    </div>
+  </div>
 
-    <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div><div class="loading-text">Processing...</div></div>
+  <div class="actionrow">
+    <button class="btn primary hidden" id="installBtn">⬇ INSTALL APP</button>
+    <button class="btn" id="fetchBtn">📡 FETCH LIVE INTEL</button>
+    <button class="btn warn" id="dossierBtn">▤ GENERATE DOSSIER</button>
+    <span id="flashind" class="mono">⚡ FLASH — SEV5 UNACKNOWLEDGED</span>
+  </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        const LGAS = [
-            { name: 'Jos North', lat: 9.9285, lng: 8.8921, incidents: [] }, { name: 'Jos South', lat: 9.8997, lng: 8.8606, incidents: [] },
-            { name: 'Jos East', lat: 9.8833, lng: 8.8833, incidents: [] }, { name: 'Barkin Ladi', lat: 9.5167, lng: 8.8667, incidents: [] },
-            { name: 'Bokkos', lat: 9.4833, lng: 8.9167, incidents: [] }, { name: 'Mangu', lat: 9.5833, lng: 9.0167, incidents: [] },
-            { name: 'Riyom', lat: 9.6167, lng: 8.7833, incidents: [] }, { name: 'Shendam', lat: 9.1833, lng: 9.5333, incidents: [] },
-            { name: 'Langtang North', lat: 9.6833, lng: 9.7833, incidents: [] }, { name: 'Langtang South', lat: 9.5167, lng: 9.7167, incidents: [] },
-            { name: 'Wase', lat: 9.2167, lng: 9.6167, incidents: [] }, { name: 'Mikang', lat: 9.2833, lng: 9.8833, incidents: [] },
-            { name: 'Pankshin', lat: 9.3167, lng: 9.4333, incidents: [] }, { name: 'Qua\'an Pan', lat: 9.0833, lng: 8.9833, incidents: [] },
-            { name: 'Kanam', lat: 9.7167, lng: 9.4167, incidents: [] }, { name: 'Kanke', lat: 9.6833, lng: 9.1833, incidents: [] },
-            { name: 'Dengi', lat: 9.8833, lng: 8.6167, incidents: [] }
-        ];
-        const BASES = [{ name: '33 Artillery Bde', lat: 9.9100, lng: 8.8800 }, { name: 'STF HQ Jos', lat: 9.9300, lng: 8.8900 }, { name: 'Bukuru Cmd', lat: 9.8900, lng: 8.8600 }];
+  <div id="mapshell">
+    <div id="map"></div>
+    <div class="scanline"></div>
+    <div id="mapfallback"><b>MAP MODULE STANDBY</b><span class="mono" style="font-size:11px;">Tile network unavailable — console remains fully operational.</span></div>
+  </div>
+  <div class="maphint mono">Tap map to drop a reference point · click a marker to file / delete a report.</div>
 
-        let allIncidents = JSON.parse(localStorage.getItem('plateauIncidents')) || [
-            { id: 1, lga: 'Jos North', lat: 9.9285, lng: 8.8921, type: 'Clash', severity: 4, date: '2026-07-20', desc: 'Armed clash near market', source: 'manual' },
-            { id: 2, lga: 'Jos South', lat: 9.9000, lng: 8.8500, type: 'Attack', severity: 5, date: '2026-07-21', desc: 'Bandit attack on convoy', source: 'news' }
-        ];
-        allIncidents.forEach(inc => { if(LGAS.find(l=>l.name===inc.lga)) LGAS.find(l=>l.name===inc.lga).incidents.push(inc); });
+  <div class="stats">
+    <div class="stat"><div class="num" id="statTotal">0</div><div class="lbl">TOTAL REPORTS</div></div>
+    <div class="stat crit"><div class="num" id="statCrit">0</div><div class="lbl">CRITICAL (SEV≥4)</div></div>
+    <div class="stat act"><div class="num" id="statLga">0</div><div class="lbl">ACTIVE LGAs</div></div>
+  </div>
 
-        let map, currentMarker, markers = [], selectedFiles = [];
+  <div class="panel"><h2>HQ REPORT ANALYZER <span class="badge">LOCAL NLP · ON-DEVICE</span></h2>
+    <div class="field"><label>UPLOAD .TXT OR PASTE SITREP TEXT</label>
+      <input type="file" id="analyzerFile" accept=".txt">
+      <textarea id="analyzerText" placeholder="Paste raw report text…"></textarea>
+    </div>
+    <button class="btn" id="analyzeBtn">ANALYZE TEXT</button>
+    <div id="excards" style="margin-top:12px;"></div>
+    <button class="btn primary hidden" id="commitBtn" style="margin-top:8px;">✓ COMMIT TO MAP</button>
+  </div>
 
-        function saveData() { localStorage.setItem('plateauIncidents', JSON.stringify(allIncidents)); }
+  <div class="panel"><h2>LGA TREND ANALYSIS</h2>
+    <div class="lgagrid" id="lgaGrid"></div>
+  </div>
 
-        function initMap() {
-            map = L.map('map', { tap: true }).setView([9.5, 9.0], 9);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-            map.on('click', function(e) { handleMapClick(e.latlng.lat, e.latlng.lng); });
-            drawMarkers(); renderLGAButtons(); updateStats(); initLGASelect();
-            document.getElementById('currentDate').textContent = new Date().toLocaleDateString() + ' • Live Data';
-        }
+  <div class="panel"><h2>MANUAL FIELD REPORT</h2>
+    <div class="field"><label>LGA</label><select id="fLga"></select></div>
+    <div class="row2">
+      <div class="field"><label>LAT</label><input id="fLat" type="text" readonly></div>
+      <div class="field"><label>LON</label><input id="fLon" type="text" readonly></div>
+    </div>
+    <button class="btn" id="gpsBtn" type="button">📍 USE GPS LOCATION</button>
+    <div class="field" style="margin-top:12px;"><label>TYPE</label>
+      <select id="fType"><option>Clash</option><option>Attack</option><option>Kidnap</option><option>IED</option><option>Robbery</option><option>Suspicious</option></select>
+    </div>
+    <div class="field"><label>SEVERITY</label>
+      <select id="fSev"><option value="2">2 — Minor</option><option value="3" selected>3 — Moderate</option><option value="4">4 — Serious</option><option value="5">5 — Critical</option></select>
+    </div>
+    <div class="field"><label>DESCRIPTION</label><textarea id="fDesc" placeholder="Brief details…"></textarea></div>
+    <div class="field"><label>MEDIA (QUEUED LOCALLY, NOT UPLOADED)</label><input type="file" id="fMedia" multiple accept="image/*,video/*" capture="environment"></div>
+    <button class="btn primary" id="submitBtn">SUBMIT REPORT</button>
+  </div>
 
-        function handleMapClick(lat, lng) {
-            if (currentMarker) map.removeLayer(currentMarker);
-            currentMarker = L.marker([lat, lng]).addTo(map);
-            const nearestLGA = findNearest(lat, lng, LGAS);
-            const nearestBase = findNearest(lat, lng, BASES);
-            const nearby = getIncidentsInRadius(lat, lng, 10);
-            const threat = calculateThreat(nearby);
-            document.getElementById('valLGA').textContent = nearestLGA.name;
-            document.getElementById('valGrid').textContent = `${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`;
-            document.getElementById('valBase').textContent = `${nearestBase.name} (${nearestBase.dist.toFixed(1)}km)`;
-            document.getElementById('valThreat').textContent = threat.text;
-            document.getElementById('cardThreat').className = `intel-card ${threat.class}`;
-            const list = document.getElementById('incidentList');
-            list.innerHTML = nearby.length === 0 ? '<div style="text-align:center;color:#94a3b8;padding:20px;">✅ Zone clear.</div>' : '';
-            nearby.forEach(inc => {
-                const div = document.createElement('div');
-                div.className = `incident-item ${inc.severity>=4?'crit':inc.severity>=3?'high':''}`;
-                div.innerHTML = `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="font-weight:bold;color:#f1f5f9;">${inc.type} [${inc.source.toUpperCase()}]</span><span style="color:#94a3b8;">${inc.date}</span></div><div style="font-size:12px;color:#cbd5e1;">${inc.desc}</div>`;
-                list.appendChild(div);
-            });
-            document.getElementById('intelPanel').classList.add('active');
-        }
-        function closePanel() { document.getElementById('intelPanel').classList.remove('active'); }
+  <div class="panel hidden" id="adminPanel"><h2>CHAIN-OF-CUSTODY CONSOLE <span class="badge">ADMIN ONLY</span></h2>
+    <div id="integrityBadge" class="integrity">—</div>
+    <div class="audit-filters">
+      <select id="auditOpFilter"><option value="">ALL OPERATORS</option></select>
+      <select id="auditActionFilter"><option value="">ALL ACTIONS</option></select>
+      <input type="date" id="auditFrom"><input type="date" id="auditTo">
+      <button class="btn" id="exportJsonBtn">EXPORT JSON</button>
+      <button class="btn" id="exportCsvBtn">EXPORT CSV</button>
+    </div>
+    <div class="ledger"><table>
+      <thead><tr><th>SEQ</th><th>TS</th><th>OP</th><th>ACTION</th><th>TARGET</th><th>HASH</th><th>✓</th></tr></thead>
+      <tbody id="ledgerBody"></tbody>
+    </table></div>
+    <h2 style="margin-top:18px;">OPERATOR ROSTER</h2>
+    <div id="rosterList"></div>
+    <button class="btn" id="addOpBtn" style="margin-top:8px;">+ ADD OPERATOR</button>
+    <h2 style="margin-top:18px;">DATA HANDOVER</h2>
+    <button class="btn" id="exportAllBtn">EXPORT ALL</button>
+    <input type="file" id="importAllFile" accept=".json" style="margin-left:8px;">
+  </div>
 
-        function drawMarkers() {
-            markers.forEach(m => map.removeLayer(m)); markers = [];
-            allIncidents.forEach(inc => {
-                const color = inc.severity >= 4 ? '#dc2626' : inc.severity >= 3 ? '#f59e0b' : '#10b981';
-                const m = L.circleMarker([inc.lat, inc.lng], { radius: inc.severity*3, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(map);
-                m.bindPopup(`<b>${inc.lga}</b><br>${inc.type}<br>${inc.desc}<br><i>${inc.date} [${inc.source}]</i>`);
-                markers.push(m);
-            });
-        }
+  <footer class="mono">NSIRS PILOT BUILD · PLATEAU STATE · LOCAL-STORAGE ONLY · NO CLOUD SYNC THIS PHASE</footer>
+</div>
 
-        function renderLGAButtons() {
-            const grid = document.getElementById('lgaGrid'); grid.innerHTML = '';
-            LGAS.forEach(lga => {
-                const btn = document.createElement('button');
-                btn.className = 'lga-btn';
-                btn.innerHTML = `${lga.name}<span class="count">${lga.incidents.length}</span>`;
-                grid.appendChild(btn);
-            });
-        }
+<!-- bottom sheet -->
+<div id="sheet">
+  <div class="sheetgrab"></div>
+  <div id="sheetContent"></div>
+</div>
 
-        function initLGASelect() {
-            const select = document.getElementById('lgaSelect');
-            LGAS.forEach(lga => {
-                const opt = document.createElement('option');
-                opt.value = `${lga.lat},${lga.lng}`; opt.textContent = lga.name;
-                select.appendChild(opt);
-            });
-        }
+<!-- trend modal -->
+<div class="modal-bg hidden" id="trendModalBg"><div class="modal">
+  <button class="x" data-close="trendModalBg">✕</button>
+  <h2 id="trendTitle">LGA TREND</h2>
+  <canvas id="trendChart" height="200"></canvas>
+  <div id="trendTimeline" class="mono" style="margin-top:12px;font-size:11px;"></div>
+</div></div>
 
-        function handleFileSelect(event) {
-            selectedFiles = Array.from(event.target.files);
-            document.getElementById('fileList').innerHTML = selectedFiles.length > 0 ? `✅ ${selectedFiles.length} file(s) selected` : '';
-        }
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) { document.getElementById('textArea').value = e.target.result; };
-                reader.readAsText(file);
-            }
-        }
+<!-- dossier modal -->
+<div class="modal-bg hidden" id="dossierModalBg"><div class="modal" style="max-width:760px;">
+  <button class="x" data-close="dossierModalBg">✕</button>
+  <div style="margin-bottom:10px;"><button class="btn primary" id="printBtn">🖨 PRINT / SAVE PDF</button></div>
+  <div id="dossier"></div>
+</div></div>
 
-        function analyzeReport() {
-            const text = document.getElementById('textArea').value.trim();
-            if (!text) return alert('Please paste or upload a report first');
-            const resultsDiv = document.getElementById('extractionResults');
-            resultsDiv.style.display = 'block';
-            resultsDiv.innerHTML = '<div style="color:#10b981; padding:10px;">✅ AI Analysis Complete! (Demo: 1 incident extracted)</div><button class="submit-btn" style="margin-top:10px; background:#10b981;" onclick="addExtracted()">✅ Add to Database</button>';
-        }
-        function addExtracted() {
-            const newInc = { id: allIncidents.length+1, lga: 'Jos North', lat: 9.9285, lng: 8.8921, type: 'Attack', severity: 4, date: new Date().toISOString().split('T')[0], desc: 'Extracted from HQ Report', source: 'manual' };
-            allIncidents.push(newInc); LGAS.find(l=>l.name==='Jos North').incidents.push(newInc);
-            drawMarkers(); renderLGAButtons(); updateStats(); saveData();
-            document.getElementById('extractionResults').style.display = 'none';
-            alert('✅ Added to map!');
-        }
+<div id="processing" class="show hidden"><div class="bigspin"></div><div class="mono" id="processingMsg">PROCESSING…</div></div>
+<div id="toastwrap"></div>
 
-        function useGPS() {
-            if(navigator.geolocation) navigator.geolocation.getCurrentPosition(p => { document.getElementById('lat').value = p.coords.latitude; document.getElementById('lng').value = p.coords.longitude; alert('GPS captured!'); }, () => alert('Location denied'));
-        }
-        function selectLGA() {
-            const val = document.getElementById('lgaSelect').value;
-            if(val) { const [lat,lng] = val.split(',').map(Number); document.getElementById('lat').value = lat; document.getElementById('lng').value = lng; }
-        }
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+/* ================= DATA ================= */
+const LGAS = [
+ {n:"Jos North",lat:9.9285,lon:8.8921},{n:"Jos South",lat:9.8997,lon:8.8606},
+ {n:"Jos East",lat:9.8833,lon:8.8833},{n:"Barkin Ladi",lat:9.5167,lon:8.8667},
+ {n:"Bokkos",lat:9.4833,lon:8.9167},{n:"Mangu",lat:9.5833,lon:9.0167},
+ {n:"Riyom",lat:9.6167,lon:8.7833},{n:"Shendam",lat:9.1833,lon:9.5333},
+ {n:"Langtang North",lat:9.6833,lon:9.7833},{n:"Langtang South",lat:9.5167,lon:9.7167},
+ {n:"Wase",lat:9.2167,lon:9.6167},{n:"Mikang",lat:9.2833,lon:9.8833},
+ {n:"Pankshin",lat:9.3167,lon:9.4333},{n:"Qua'an Pan",lat:9.0833,lon:8.9833},
+ {n:"Kanam",lat:9.7167,lon:9.4167},{n:"Kanke",lat:9.6833,lon:9.1833},
+ {n:"Dengi",lat:9.8833,lon:8.6167},
+];
+const BASES = [
+ {n:"33 Arty Bde",lat:9.91,lon:8.88},{n:"STF HQ Jos",lat:9.93,lon:8.89},
+ {n:"Bukuru Cmd",lat:9.89,lon:8.86},{n:"Shendam Gsn",lat:9.1833,lon:9.5333},
+];
+const TYPES = ["Clash","Attack","Kidnap","IED","Robbery","Suspicious"];
 
-        function submitReport() {
-            const lat = parseFloat(document.getElementById('lat').value); const lng = parseFloat(document.getElementById('lng').value);
-            if(isNaN(lat)) return alert("Select location first");
-            const nearestLGA = findNearest(lat, lng, LGAS);
-            const newInc = { id: allIncidents.length+1, lga: nearestLGA.name, lat, lng, type: document.getElementById('type').value, severity: parseInt(document.getElementById('severity').value), date: new Date().toISOString().split('T')[0], desc: document.getElementById('desc').value, source: 'manual' };
-            allIncidents.push(newInc); nearestLGA.incidents.push(newInc);
-            drawMarkers(); renderLGAButtons(); updateStats(); saveData();
-            alert("✅ Report submitted!");
-            document.getElementById('desc').value = ''; document.getElementById('fileList').innerHTML = ''; selectedFiles = [];
-        }
+/* ================= STORAGE HELPERS ================= */
+function getJSON(key, fallback){
+  try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch(e){ return fallback; }
+}
+function setJSON(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); return true; }catch(e){ return false; } }
 
-        function fetchRealData() {
-            const overlay = document.getElementById('loadingOverlay'); overlay.classList.add('active');
-            setTimeout(() => {
-                const newIncs = [{ lga: 'Barkin Ladi', type: 'Clash', severity: 4, desc: 'Live feed: Tension reported' }];
-                newIncs.forEach(inc => {
-                    const lga = LGAS.find(l=>l.name===inc.lga);
-                    const newInc = { id: allIncidents.length+1, ...inc, lat: lga.lat, lng: lga.lng, date: new Date().toISOString().split('T')[0], source: 'news' };
-                    allIncidents.push(newInc); lga.incidents.push(newInc);
-                });
-                drawMarkers(); renderLGAButtons(); updateStats(); saveData();
-                overlay.classList.remove('active');
-                alert('✅ Live Intelligence Updated!');
-            }, 1500);
-        }
+function getIncidents(){ return getJSON('plateauIncidents', []); }
+function saveIncidents(v){ setJSON('plateauIncidents', v); }
+function getRoster(){ return getJSON('nsirs_roster', null); }
+function saveRoster(v){ setJSON('nsirs_roster', v); }
+function getAudit(){ return getJSON('nsirs_audit', []); }
+function saveAudit(v){ setJSON('nsirs_audit', v); }
+function getSession(){ return getJSON('nsirs_session', null); }
+function saveSession(v){ setJSON('nsirs_session', v); }
+function getDeviceId(){
+  let d = localStorage.getItem('nsirs_device');
+  if(!d){ d = 'DEV-' + Math.random().toString(36).slice(2,10).toUpperCase(); localStorage.setItem('nsirs_device', d); }
+  return d;
+}
 
-        function updateStats() {
-            document.getElementById('totalIncidents').textContent = allIncidents.length;
-            document.getElementById('criticalIncidents').textContent = allIncidents.filter(i=>i.severity>=4).length;
-            document.getElementById('hotspots').textContent = LGAS.filter(l=>l.incidents.length>0).length;
-        }
-        function getDistance(lat1, lon1, lat2, lon2) { const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180; const a=Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2; return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); }
-        function findNearest(lat, lng, locs) { let nearest=locs[0], minDist=getDistance(lat,lng,nearest.lat,nearest.lng); for(let l of locs) { const d=getDistance(lat,lng,l.lat,l.lng); if(d<minDist){minDist=d; nearest={...l,dist:d}} } return nearest; }
-        function getIncidentsInRadius(lat, lng, r) { return allIncidents.filter(i=>getDistance(lat,lng,i.lat,i.lng)<=r).sort((a,b)=>new Date(b.date)-new Date(a.date)); }
-        function calculateThreat(incs) { if(incs.length===0) return {text:'LOW / CLEAR', class:'safe'}; const max=Math.max(...incs.map(i=>i.severity)); if(max>=5) return {text:'CRITICAL', class:'danger'}; if(max>=4) return {text:'HIGH RISK', class:'danger'}; if(max>=3) return {text:'MODERATE', class:'warning'}; return {text:'LOW', class:'safe'}; }
+/* ================= HASH / CHAIN ================= */
+function H(str){
+  let h1 = 0x811c9dc5, h2 = 5381;
+  for(let i=0;i<str.length;i++){
+    const c = str.charCodeAt(i);
+    h1 = (h1 ^ c) >>> 0; h1 = Math.imul(h1, 16777619) >>> 0;
+    h2 = ((h2 << 5) + h2 + c) >>> 0;
+  }
+  return h1.toString(16).padStart(8,'0') + h2.toString(16).padStart(8,'0');
+}
+function canonicalJSON(o){
+  if(o===null||typeof o!=='object') return JSON.stringify(o);
+  if(Array.isArray(o)) return '['+o.map(canonicalJSON).join(',')+']';
+  return '{'+Object.keys(o).sort().map(k=>JSON.stringify(k)+':'+canonicalJSON(o[k])).join(',')+'}';
+}
+let __pendingAuthOp = null; // {opId,callsign} used for AUTH_FAIL rows pre-session
+let __lastGrid = null;
 
-        window.onload = initMap;
-    </script>
+function writeAudit(action, target){
+  const audit = getAudit();
+  const last = audit.length ? audit[audit.length-1].hash : 'GENESIS';
+  const session = getSession();
+  const opId = session ? session.opId : (__pendingAuthOp ? __pendingAuthOp.opId : 'SYSTEM');
+  const callsign = session ? session.callsign : (__pendingAuthOp ? __pendingAuthOp.callsign : 'SYSTEM');
+  const rank = session ? session.rank : '-';
+  const base = { seq: audit.length+1, opId, callsign, rank, action, target: target||'-',
+    ts: new Date().toISOString(), device: getDeviceId(), grid: __lastGrid || '—', prevHash: last };
+  const hash = H(last + canonicalJSON(base));
+  const entry = Object.assign({}, base, { hash, synced:false });
+  audit.push(entry); saveAudit(audit);
+  renderLedgerIfOpen();
+  return entry;
+}
+function verifyChain(){
+  const audit = getAudit();
+  let prev = 'GENESIS';
+  for(const e of audit){
+    const base = {seq:e.seq,opId:e.opId,callsign:e.callsign,rank:e.rank,action:e.action,target:e.target,ts:e.ts,device:e.device,grid:e.grid,prevHash:prev};
+    const expected = H(prev + canonicalJSON(base));
+    if(e.prevHash!==prev || e.hash!==expected) return {ok:false, brokenAt:e.seq};
+    prev = e.hash;
+  }
+  return {ok:true, count:audit.length};
+}
+
+/* ================= SEED ================= */
+function seedRoster(){
+  if(getRoster()) return;
+  const roster = [
+    {opId:'OP-001',callsign:'FALCON',rank:'CMDR',unit:'STF HQ',clearance:'ADMIN',pinHash:H('1234'),active:true,fails:0,lockUntil:0},
+    {opId:'OP-002',callsign:'HAWK',rank:'CAPT',unit:'33 Arty',clearance:'COMMAND',pinHash:H('2233'),active:true,fails:0,lockUntil:0},
+    {opId:'OP-003',callsign:'KITE',rank:'LT',unit:'Barkin Ladi',clearance:'OBSERVER',pinHash:H('4455'),active:true,fails:0,lockUntil:0},
+  ];
+  saveRoster(roster);
+}
+function seedIncidents(){
+  const cur = getIncidents();
+  if(cur.length) return;
+  const now = Date.now();
+  const mk = (lga,type,sev,daysAgo,desc)=>{
+    const g = LGAS.find(l=>l.n===lga);
+    return {id:'INC-'+Math.random().toString(36).slice(2,9),lga,lat:g.lat,lon:g.lon,type,severity:sev,
+      desc,date:new Date(now-daysAgo*86400000).toISOString(),source:'SEED',flash:sev===5,
+      reportedBy:{opId:'SYSTEM',callsign:'SEED'}};
+  };
+  saveIncidents([
+    mk('Jos North','Clash',4,2,'Communal clash reported near central market.'),
+    mk('Jos South','Attack',5,1,'Armed attack on settlement, casualties reported.'),
+    mk('Mangu','Attack',5,4,'Coordinated attack on farming community.'),
+  ]);
+}
+seedRoster(); seedIncidents();
+
+/* ================= TOASTS / PROCESSING ================= */
+function toast(msg, kind){
+  const wrap = document.getElementById('toastwrap');
+  const el = document.createElement('div');
+  el.className = 'toast' + (kind?(' '+kind):'');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),300); }, 3200);
+}
+function showProcessing(msg){ document.getElementById('processingMsg').textContent = msg||'PROCESSING…'; document.getElementById('processing').classList.remove('hidden'); document.getElementById('processing').classList.add('show'); }
+function hideProcessing(){ document.getElementById('processing').classList.remove('show'); document.getElementById('processing').classList.add('hidden'); }
+
+/* ================= CLOCK / TICKER / PWA CHIP ================= */
+setInterval(()=>{ document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB'); }, 1000);
+function updatePwaChip(){
+  const chip = document.getElementById('pwaChip');
+  const cached = matchMedia('(display-mode: standalone)').matches;
+  if(navigator.onLine){ chip.textContent = (cached?'PWA: CACHED':'PWA: WEB') + ' • ONLINE'; chip.classList.remove('off'); }
+  else { chip.textContent = (cached?'PWA: CACHED':'PWA: WEB') + ' • OFFLINE'; chip.classList.add('off'); }
+}
+window.addEventListener('online', updatePwaChip); window.addEventListener('offline', updatePwaChip); updatePwaChip();
+
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt = e; document.getElementById('installBtn').classList.remove('hidden'); });
+document.getElementById('installBtn').addEventListener('click', async ()=>{
+  if(deferredPrompt){ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; }
+  else { toast('On iOS: Share → Add to Home Screen. On Android: browser menu → Install app.'); }
+});
+
+/* ================= GATE / AUTH ================= */
+let pinBuffer = '';
+function renderOpSelect(){
+  const sel = document.getElementById('opSelect');
+  sel.innerHTML = '';
+  getRoster().filter(o=>o.active).forEach(o=>{
+    const opt = document.createElement('option');
+    opt.value = o.opId; opt.textContent = `${o.callsign} · ${o.rank} · ${o.unit}`;
+    sel.appendChild(opt);
+  });
+}
+function renderPinPad(padId, dotsId, onSubmit){
+  const pad = document.getElementById(padId);
+  pad.innerHTML = '';
+  const keys = ['1','2','3','4','5','6','7','8','9','⌫','0','CLR'];
+  keys.forEach(k=>{
+    const b = document.createElement('button'); b.textContent = k;
+    b.addEventListener('click', ()=>{
+      if(k==='⌫') pinBuffer = pinBuffer.slice(0,-1);
+      else if(k==='CLR') pinBuffer = '';
+      else if(pinBuffer.length<6) pinBuffer += k;
+      renderDots(dotsId);
+      if(pinBuffer.length>=4 && k!=='⌫' && k!=='CLR'){ /* allow manual submit via button below pad or auto after 4 for simplicity keep manual */ }
+    });
+    pad.appendChild(b);
+  });
+}
+function renderDots(dotsId){
+  const wrap = document.getElementById(dotsId); wrap.innerHTML = '';
+  const n = Math.max(pinBuffer.length, 4);
+  for(let i=0;i<Math.max(4,pinBuffer.length);i++){
+    const s = document.createElement('span'); if(i<pinBuffer.length) s.classList.add('filled'); wrap.appendChild(s);
+  }
+}
+renderOpSelect(); renderPinPad('pinPad','pinDots');
+
+document.getElementById('authBtn').addEventListener('click', ()=>{
+  const opId = document.getElementById('opSelect').value;
+  const roster = getRoster();
+  const op = roster.find(o=>o.opId===opId);
+  const card = document.getElementById('gateCard');
+  const lockMsg = document.getElementById('gateLockMsg');
+  if(!op){ toast('No operator selected','err'); return; }
+  if(op.lockUntil && Date.now() < op.lockUntil){
+    const secs = Math.ceil((op.lockUntil-Date.now())/1000);
+    lockMsg.textContent = `OPERATOR LOCKED · RETRY IN ${secs}s`; lockMsg.classList.remove('hidden');
+    card.classList.add('shake'); setTimeout(()=>card.classList.remove('shake'),400);
+    return;
+  }
+  __pendingAuthOp = {opId:op.opId, callsign:op.callsign};
+  if(H(pinBuffer) === op.pinHash){
+    op.fails = 0; op.lockUntil = 0; saveRoster(roster);
+    const session = {opId:op.opId,callsign:op.callsign,rank:op.rank,clearance:op.clearance,loginAt:Date.now(),lastActivity:Date.now()};
+    saveSession(session);
+    writeAudit('LOGIN', op.callsign);
+    __pendingAuthOp = null;
+    pinBuffer=''; lockMsg.classList.add('hidden');
+    mountApp();
+  } else {
+    op.fails = (op.fails||0)+1;
+    writeAudit('AUTH_FAIL', op.callsign);
+    if(op.fails>=5){ op.lockUntil = Date.now()+60000; lockMsg.textContent='5 FAILED ATTEMPTS · LOCKED 60s'; lockMsg.classList.remove('hidden'); }
+    else { lockMsg.textContent = `INCORRECT PIN · ${5-op.fails} ATTEMPTS REMAIN`; lockMsg.classList.remove('hidden'); }
+    saveRoster(roster);
+    card.classList.add('shake'); setTimeout(()=>card.classList.remove('shake'),400);
+    pinBuffer=''; renderDots('pinDots');
+  }
+});
+
+/* lock/re-auth pad */
+let lockPinBuffer = '';
+function renderLockPad(){
+  const pad = document.getElementById('lockPinPad'); pad.innerHTML='';
+  ['1','2','3','4','5','6','7','8','9','⌫','0','OK'].forEach(k=>{
+    const b=document.createElement('button'); b.textContent=k;
+    b.addEventListener('click', ()=>{
+      if(k==='⌫') lockPinBuffer = lockPinBuffer.slice(0,-1);
+      else if(k==='OK') tryUnlock();
+      else if(lockPinBuffer.length<6) lockPinBuffer += k;
+      const wrap = document.getElementById('lockPinDots'); wrap.innerHTML='';
+      for(let i=0;i<Math.max(4,lockPinBuffer.length);i++){ const s=document.createElement('span'); if(i<lockPinBuffer.length) s.classList.add('filled'); wrap.appendChild(s); }
+    });
+    pad.appendChild(b);
+  });
+}
+renderLockPad();
+function tryUnlock(){
+  const session = getSession(); if(!session) return;
+  const roster = getRoster(); const op = roster.find(o=>o.opId===session.opId);
+  if(op && H(lockPinBuffer)===op.pinHash){
+    session.lastActivity = Date.now(); saveSession(session);
+    writeAudit('UNLOCK', session.callsign);
+    document.getElementById('lockover').classList.remove('show');
+    lockPinBuffer='';
+  } else {
+    writeAudit('AUTH_FAIL', session.callsign);
+    toast('Incorrect PIN','err'); lockPinBuffer='';
+  }
+}
+document.getElementById('lockBtn').addEventListener('click', ()=>{
+  writeAudit('LOCK', getSession().callsign);
+  document.getElementById('lockCallsign').textContent = 'OP: '+getSession().callsign;
+  document.getElementById('lockover').classList.add('show');
+});
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  const s = getSession(); if(s) writeAudit('LOGOUT', s.callsign);
+  localStorage.removeItem('nsirs_session');
+  location.reload();
+});
+
+/* activity / auto-lock */
+['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev, ()=>{
+  const s = getSession(); if(s){ s.lastActivity = Date.now(); saveSession(s); }
+}));
+setInterval(()=>{
+  const s = getSession(); if(!s) return;
+  if(Date.now()-s.lastActivity > 15*60*1000 && !document.getElementById('lockover').classList.contains('show')){
+    writeAudit('LOCK', s.callsign);
+    document.getElementById('lockCallsign').textContent = 'OP: '+s.callsign;
+    document.getElementById('lockover').classList.add('show');
+  }
+  if(document.getElementById('app') && !document.getElementById('app').classList.contains('hidden')){
+    document.getElementById('sessText').textContent =
+      `OP: ${s.callsign} · CLR: ${s.clearance} · SESSION ${fmtDur(Date.now()-s.loginAt)}`;
+  }
+}, 1000);
+function fmtDur(ms){
+  const t = Math.floor(ms/1000); const h=String(Math.floor(t/3600)).padStart(2,'0');
+  const m=String(Math.floor((t%3600)/60)).padStart(2,'0'); const s=String(t%60).padStart(2,'0');
+  return `${h}:${m}:${s}`;
+}
+
+/* ================= MOUNT APP ================= */
+function mountApp(){
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('sessSeg').classList.remove('hidden');
+  const s = getSession();
+  if(s && s.clearance==='ADMIN') document.getElementById('adminPanel').classList.remove('hidden');
+  populateFormSelects();
+  renderLgaGrid();
+  renderStats();
+  renderLedger();
+  initMap();
+  revealPanels();
+  animateCounters();
+}
+function revealPanels(){
+  document.querySelectorAll('.panel').forEach((p,i)=>setTimeout(()=>p.classList.add('show'), i*90));
+}
+
+/* resume session on load if valid */
+(function boot(){
+  const s = getSession();
+  if(s){ mountApp(); }
+})();
+
+/* ================= MAP ================= */
+let map, markerLayer;
+function initMap(){
+  try{
+    map = L.map('map', {zoomControl:true}).setView([9.55, 9.2], 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:16, attribution:'© OpenStreetMap'}).addTo(map);
+    markerLayer = L.layerGroup().addTo(map);
+    redrawMarkers();
+    map.on('click', (e)=>{
+      __lastGrid = e.latlng.lat.toFixed(4)+','+e.latlng.lng.toFixed(4);
+      openSheetForLatLng(e.latlng.lat, e.latlng.lng);
+    });
+  }catch(err){
+    document.getElementById('mapfallback').classList.add('show');
+  }
+}
+function severityColor(sev){ return sev>=4 ? '#e0533d' : sev>=3 ? '#f0a93b' : '#5fcf80'; }
+function redrawMarkers(){
+  if(!markerLayer) return;
+  markerLayer.clearLayers();
+  getIncidents().forEach(inc=>{
+    const m = L.circleMarker([inc.lat, inc.lon], {radius:6+inc.severity*1.6, color:'#0b0f12', weight:1, fillColor:severityColor(inc.severity), fillOpacity:.85}).addTo(markerLayer);
+    const popupEl = document.createElement('div');
+    popupEl.innerHTML = `<b>${inc.lga}</b><br>${inc.type} · SEV ${inc.severity}<br>${inc.desc||''}<br><small>${new Date(inc.date).toLocaleString()}</small><br><small>src: ${inc.source||'field'}</small><br><b>FILED BY ${inc.reportedBy?inc.reportedBy.callsign:'—'}</b><br><button style="margin-top:6px;background:#e0533d;color:#fff;border:none;padding:4px 8px;border-radius:3px;">🗑 DELETE</button>`;
+    popupEl.querySelector('button').addEventListener('click', ()=>{
+      if(confirm('Delete this report?')){
+        const next = getIncidents().filter(i=>i.id!==inc.id);
+        saveIncidents(next); writeAudit('DELETE', inc.id);
+        redrawMarkers(); renderStats(); renderLgaGrid(); toast('Report deleted');
+        map.closePopup();
+      }
+    });
+    m.bindPopup(popupEl);
+  });
+}
+
+/* ================= BOTTOM SHEET ================= */
+function haversine(lat1,lon1,lat2,lon2){
+  const R=6371, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+  const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function toDMS(deg,isLat){
+  const abs=Math.abs(deg), d=Math.floor(abs), mFull=(abs-d)*60, m=Math.floor(mFull), s=((mFull-m)*60).toFixed(1);
+  const dir = isLat ? (deg>=0?'N':'S') : (deg>=0?'E':'W');
+  return `${d}°${m}'${s}"${dir}`;
+}
+function nearestLga(lat,lon){
+  let best=null, bd=Infinity;
+  LGAS.forEach(l=>{ const d=haversine(lat,lon,l.lat,l.lon); if(d<bd){bd=d;best=l;} });
+  return {lga:best, dist:bd};
+}
+function nearestBase(lat,lon){
+  let best=null, bd=Infinity;
+  BASES.forEach(b=>{ const d=haversine(lat,lon,b.lat,b.lon); if(d<bd){bd=d;best=b;} });
+  return {base:best, dist:bd};
+}
+function openSheetForLatLng(lat, lon){
+  const {lga,dist} = nearestLga(lat,lon);
+  const {base,dist:bdist} = nearestBase(lat,lon);
+  const within10 = getIncidents().filter(i=>haversine(lat,lon,i.lat,i.lon)<=10);
+  const maxSev = within10.reduce((m,i)=>Math.max(m,i.severity),0);
+  let level='LOW', cls='LOW';
+  if(maxSev>=5){level='CRITICAL';cls='CRITICAL';} else if(maxSev===4){level='HIGH RISK';cls='HIGH';} else if(within10.length>0){level='MODERATE';cls='MODERATE';}
+  const html = `
+    <h3 style="margin:0 0 8px;">${lga.n} (nearest)</h3>
+    <div class="mono" style="font-size:11px;color:var(--mute);">GRID REF (WGS84): ${toDMS(lat,true)} ${toDMS(lon,false)}</div>
+    <div class="mono" style="font-size:11px;color:var(--mute);">Nearest base: ${base.n} · ${bdist.toFixed(1)} km</div>
+    <div class="threatcard ${cls}">THREAT LEVEL: ${level} — ${within10.length} incident(s) within 10km</div>
+    <div style="margin-top:8px;">
+      ${within10.length ? within10.map(i=>`<div class="mono" style="font-size:11px;border-bottom:1px solid var(--line);padding:4px 0;">${i.lga} · ${i.type} · SEV${i.severity} · ${new Date(i.date).toLocaleDateString()} · filed by ${i.reportedBy?i.reportedBy.callsign:'—'}</div>`).join('') : '<div class="mono" style="color:var(--ok);">ZONE CLEAR</div>'}
+    </div>`;
+  document.getElementById('sheetContent').innerHTML = html;
+  document.getElementById('sheet').classList.add('show');
+  writeAudit('VIEW_INTEL', lga.n);
+}
+document.getElementById('sheet').addEventListener('click', (e)=>{ if(e.target.id==='sheet') document.getElementById('sheet').classList.remove('show'); });
+document.querySelector('.sheetgrab').addEventListener('click', ()=>document.getElementById('sheet').classList.remove('show'));
+
+/* ================= STATS / COUNTERS ================= */
+function renderStats(){
+  const inc = getIncidents();
+  document.getElementById('statTotal').dataset.target = inc.length;
+  document.getElementById('statCrit').dataset.target = inc.filter(i=>i.severity>=4).length;
+  document.getElementById('statLga').dataset.target = new Set(inc.map(i=>i.lga)).size;
+  const anyUnackedFlash = inc.some(i=>i.flash);
+  document.getElementById('flashind').classList.toggle('show', anyUnackedFlash);
+}
+function animateCounters(){
+  document.querySelectorAll('.stat .num').forEach(el=>{
+    const target = parseInt(el.dataset.target||el.textContent)||0;
+    let cur = 0; const step = Math.max(1, Math.ceil(target/24));
+    const t = setInterval(()=>{ cur=Math.min(target,cur+step); el.textContent=cur; if(cur>=target) clearInterval(t); }, 25);
+  });
+}
+
+/* ================= LGA GRID + TREND MODAL ================= */
+function populateFormSelects(){
+  const sel = document.getElementById('fLga'); sel.innerHTML='';
+  LGAS.forEach(l=>{ const o=document.createElement('option'); o.value=l.n; o.textContent=l.n; sel.appendChild(o); });
+  sel.addEventListener('change', ()=>{
+    const g = LGAS.find(x=>x.n===sel.value);
+    document.getElementById('fLat').value = g.lat; document.getElementById('fLon').value = g.lon;
+  });
+  sel.dispatchEvent(new Event('change'));
+}
+function renderLgaGrid(){
+  const grid = document.getElementById('lgaGrid'); grid.innerHTML='';
+  const inc = getIncidents();
+  LGAS.forEach(l=>{
+    const items = inc.filter(i=>i.lga===l.n);
+    const hot = items.some(i=>i.severity>=4);
+    const card = document.createElement('div');
+    card.className = 'lgacard' + (hot?' hot':'');
+    card.innerHTML = `<div class="name">${l.n}</div><div class="cnt">${items.length}</div>`;
+    card.addEventListener('click', ()=>openTrendModal(l.n));
+    grid.appendChild(card);
+  });
+}
+let trendChartInstance = null;
+function openTrendModal(lgaName){
+  const items = getIncidents().filter(i=>i.lga===lgaName).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  document.getElementById('trendTitle').textContent = lgaName.toUpperCase() + ' — TREND';
+  const byDate = {};
+  items.forEach(i=>{ const d=i.date.slice(0,10); byDate[d]=(byDate[d]||0)+1; });
+  const labels = Object.keys(byDate).sort();
+  const data = labels.map(d=>byDate[d]);
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  if(trendChartInstance) trendChartInstance.destroy();
+  trendChartInstance = new Chart(ctx, {type:'line', data:{labels, datasets:[{label:'Incidents', data, borderColor:'#38c7b8', backgroundColor:'rgba(56,199,184,.2)', tension:.3}]},
+    options:{plugins:{legend:{display:false}}, scales:{x:{ticks:{color:'#8497a3'}},y:{ticks:{color:'#8497a3'},beginAtZero:true}}}});
+  document.getElementById('trendTimeline').innerHTML = items.length ? items.map(i=>`${new Date(i.date).toLocaleDateString()} · ${i.type} · SEV${i.severity} · ${i.reportedBy?i.reportedBy.callsign:'—'}`).join('<br>') : 'No incidents logged.';
+  document.getElementById('trendModalBg').classList.remove('hidden');
+}
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', ()=>document.getElementById(b.dataset.close).classList.add('hidden')));
+
+/* ================= MANUAL FORM ================= */
+document.getElementById('gpsBtn').addEventListener('click', ()=>{
+  if(!navigator.geolocation){ toast('Geolocation unavailable','err'); return; }
+  toast('Locking GPS…');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    document.getElementById('fLat').value = pos.coords.latitude.toFixed(5);
+    document.getElementById('fLon').value = pos.coords.longitude.toFixed(5);
+    __lastGrid = pos.coords.latitude.toFixed(4)+','+pos.coords.longitude.toFixed(4);
+    toast('GPS lock acquired','ok');
+  }, err=>{ toast('GPS denied/unavailable — using LGA centroid','err'); }, {enableHighAccuracy:true, timeout:8000});
+});
+document.getElementById('submitBtn').addEventListener('click', ()=>{
+  const lga = document.getElementById('fLga').value;
+  const lat = parseFloat(document.getElementById('fLat').value);
+  const lon = parseFloat(document.getElementById('fLon').value);
+  if(isNaN(lat)||isNaN(lon)){ toast('Location required','err'); return; }
+  const sev = parseInt(document.getElementById('fSev').value);
+  const media = document.getElementById('fMedia').files;
+  const mediaNames = Array.from(media).map(f=>f.name);
+  const inc = {
+    id:'INC-'+Math.random().toString(36).slice(2,9), lga, lat, lon,
+    type: document.getElementById('fType').value, severity: sev,
+    desc: document.getElementById('fDesc').value, date: new Date().toISOString(),
+    source:'field', flash: sev===5, media: mediaNames,
+    reportedBy: {opId:getSession().opId, callsign:getSession().callsign}
+  };
+  const next = getIncidents(); next.push(inc); saveIncidents(next);
+  writeAudit('SUBMIT', inc.id);
+  if(sev===5) toast('⚡ FLASH — SEV5 ESCALATED','flash');
+  redrawMarkers(); renderStats(); renderLgaGrid(); animateCounters();
+  document.getElementById('fDesc').value=''; document.getElementById('fMedia').value='';
+  toast('Report submitted','ok');
+});
+
+/* ================= ANALYZER (local NLP) ================= */
+const LGA_KEYWORDS = {
+  'Mangu':['mangu'], 'Wase':['wase','zak'], 'Jos North':['jos north','terminus'],
+  'Jos South':['jos south','bukuru'], 'Jos East':['jos east','rayfield'],
+  'Barkin Ladi':['barkin ladi'], 'Shendam':['shendam'], 'Riyom':['riyom'],
+  'Bokkos':['bokkos'], 'Pankshin':['pankshin'], 'Kanam':['kanam'],
+};
+function classifyType(t){
+  if(/clash|fighting|confrontation/.test(t)) return 'Clash';
+  if(/kidnap|abduct|hostage/.test(t)) return 'Kidnap';
+  if(/\bied\b|explosion|bomb|blast/.test(t)) return 'IED';
+  if(/robber|theft/.test(t)) return 'Robbery';
+  if(/arrest|suspect|suspicious|unusual/.test(t)) return 'Suspicious';
+  return 'Attack';
+}
+function classifySeverity(t){
+  if(/critical|massacre|multiple killed|murder|shot|killed|dead/.test(t)) return 5;
+  if(/serious|attempted|injured|wounded|major/.test(t)) return 4;
+  if(/low|minor|slight/.test(t)) return 2;
+  return 3;
+}
+let lastExtracted = [];
+document.getElementById('analyzerFile').addEventListener('change', (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{ document.getElementById('analyzerText').value = r.result; };
+  r.readAsText(f);
+});
+document.getElementById('analyzeBtn').addEventListener('click', ()=>{
+  const text = (document.getElementById('analyzerText').value||'').toLowerCase();
+  const results = [];
+  Object.entries(LGA_KEYWORDS).forEach(([lga, kws])=>{
+    if(kws.some(k=>text.includes(k))){
+      const idx = Math.max(...kws.map(k=>text.indexOf(k)).filter(i=>i>=0));
+      const snippet = text.slice(Math.max(0,idx-80), idx+140).replace(/\s+/g,' ').trim().slice(0,220);
+      results.push({lga, type: classifyType(text), severity: classifySeverity(text), desc: snippet});
+    }
+  });
+  lastExtracted = results;
+  writeAudit('ANALYZE', `${results.length} matches`);
+  const wrap = document.getElementById('excards'); wrap.innerHTML = '';
+  if(!results.length){ wrap.innerHTML = '<div class="mono" style="color:var(--mute);font-size:12px;">No LGA matches found in text.</div>'; document.getElementById('commitBtn').classList.add('hidden'); return; }
+  results.forEach(r=>{
+    const el = document.createElement('div'); el.className='excard';
+    el.innerHTML = `<div><b>${r.lga}</b> · ${r.type}<div class="mono" style="font-size:11px;color:var(--mute);margin-top:4px;">${r.desc}</div></div><span class="sevbadge sev${r.severity}">SEV ${r.severity}</span>`;
+    wrap.appendChild(el);
+  });
+  document.getElementById('commitBtn').classList.remove('hidden');
+});
+document.getElementById('commitBtn').addEventListener('click', ()=>{
+  const s = getSession(); const inc = getIncidents();
+  lastExtracted.forEach(r=>{
+    const g = LGAS.find(l=>l.n===r.lga);
+    inc.push({id:'INC-'+Math.random().toString(36).slice(2,9), lga:r.lga, lat:g.lat, lon:g.lon, type:r.type, severity:r.severity,
+      desc:r.desc, date:new Date().toISOString(), source:'analyzer', flash:r.severity===5, reportedBy:{opId:s.opId,callsign:s.callsign}});
+  });
+  saveIncidents(inc);
+  writeAudit('COMMIT_EXTRACT', `${lastExtracted.length} incidents`);
+  redrawMarkers(); renderStats(); renderLgaGrid(); animateCounters();
+  toast(`${lastExtracted.length} incident(s) committed to map`,'ok');
+  document.getElementById('excards').innerHTML=''; document.getElementById('commitBtn').classList.add('hidden');
+  document.getElementById('analyzerText').value='';
+});
+
+/* ================= FETCH LIVE INTEL ================= */
+document.getElementById('fetchBtn').addEventListener('click', ()=>{
+  showProcessing('ACLED • PREMIUM TIMES • PUNCH • VANGUARD');
+  setTimeout(()=>{
+    const pool = [
+      {type:'Clash', desc:'Reported communal clash, security forces deployed.'},
+      {type:'Robbery', desc:'Armed robbery incident along major road.'},
+      {type:'Suspicious', desc:'Suspicious movement reported by local vigilante.'},
+      {type:'Attack', desc:'Attack on settlement reported by local sources.'},
+    ];
+    const pick = pool[Math.floor(Math.random()*pool.length)];
+    const lga = LGAS[Math.floor(Math.random()*LGAS.length)];
+    const sev = 2+Math.floor(Math.random()*4);
+    const inc = {id:'INC-'+Math.random().toString(36).slice(2,9), lga:lga.n, lat:lga.lat, lon:lga.lon,
+      type:pick.type, severity:sev, desc:pick.desc, date:new Date().toISOString(), source:'wire', flash:sev===5,
+      reportedBy:{opId:'SYSTEM',callsign:'WIRE'}};
+    const next = getIncidents(); next.push(inc); saveIncidents(next);
+    writeAudit('FETCH', inc.id);
+    redrawMarkers(); renderStats(); renderLgaGrid(); animateCounters();
+    hideProcessing();
+    toast(`New wire report: ${lga.n} — ${pick.type}`,'ok');
+  }, 1600);
+});
+
+/* ================= DOSSIER ================= */
+let dossierCharts = [];
+document.getElementById('dossierBtn').addEventListener('click', buildDossier);
+function buildDossier(){
+  const inc = getIncidents();
+  const s = getSession();
+  const byType = {}, bySev = {}, byLga = {}, byDate = {};
+  inc.forEach(i=>{ byType[i.type]=(byType[i.type]||0)+1; bySev[i.severity]=(bySev[i.severity]||0)+1;
+    byLga[i.lga]=(byLga[i.lga]||0)+1; const d=i.date.slice(0,10); byDate[d]=(byDate[d]||0)+1; });
+  const chain = verifyChain();
+  const serial = 'NSIRS-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + (getAudit().length);
+  const flashRows = inc.filter(i=>i.severity===5);
+
+  const html = `
+    <div class="dhead">RESTRICTED // LAW-ENFORCEMENT SENSITIVE<br><small>PLATEAU STATE — ALL 17 LGAs · SERIAL ${serial}</small></div>
+    <div style="font-size:10px;margin-bottom:10px;">GENERATED BY ${s.callsign} (${s.rank}, ${s.clearance}) · ${new Date().toLocaleString()} · GRID ${__lastGrid||'—'} · CLEARANCE ${s.clearance}</div>
+    <h3>EXECUTIVE TELEMETRY</h3>
+    <div class="dgrid">
+      <div>TOTAL: ${inc.length}</div><div>CRITICAL: ${inc.filter(i=>i.severity>=4).length}</div><div>ACTIVE LGAs: ${new Set(inc.map(i=>i.lga)).size}</div>
+    </div>
+    <div class="dgrid">
+      ${Object.entries(byType).map(([k,v])=>`<div>${k}: ${v}</div>`).join('')}
+    </div>
+    <h3>INCIDENTS PER LGA</h3><canvas id="dChart1" width="600" height="240"></canvas><div id="dImg1"></div>
+    <h3>INCIDENTS PER DATE</h3><canvas id="dChart2" width="600" height="240"></canvas><div id="dImg2"></div>
+    <h3>SEVERITY-5 FLASH TABLE</h3>
+    ${flashRows.length ? `<table class="dtable"><tr><th>DATE</th><th>LGA</th><th>TYPE</th><th>FILED BY</th><th>DESC</th></tr>${flashRows.map(r=>`<tr><td>${r.date.slice(0,10)}</td><td>${r.lga}</td><td>${r.type}</td><td>${r.reportedBy?r.reportedBy.callsign:'—'}</td><td>${(r.desc||'').slice(0,60)}</td></tr>`).join('')}</table>` : '<div>NONE</div>'}
+    <h3>FULL INCIDENT LEDGER</h3>
+    <table class="dtable"><tr><th>DATE</th><th>LGA</th><th>TYPE</th><th>SEV</th><th>FILED BY</th><th>SRC</th><th>DESC</th></tr>
+    ${inc.map(r=>`<tr><td>${r.date.slice(0,10)}</td><td>${r.lga}</td><td>${r.type}</td><td>${r.severity}</td><td>${r.reportedBy?r.reportedBy.callsign:'—'}</td><td>${r.source||''}</td><td>${(r.desc||'').slice(0,50)}</td></tr>`).join('')}
+    </table>
+    <h3>CHAIN-OF-CUSTODY SUMMARY</h3>
+    <div>Entries: ${getAudit().length} · First hash: ${getAudit()[0]?getAudit()[0].hash.slice(0,12):'—'} · Last hash: ${getAudit().length?getAudit()[getAudit().length-1].hash.slice(0,12):'—'} · Integrity: ${chain.ok?'✓ INTACT':'✗ BROKEN AT '+chain.brokenAt} · Generated by ${s.callsign}</div>
+    <div class="dhead" style="margin-top:16px;">RESTRICTED // LAW-ENFORCEMENT SENSITIVE</div>
+  `;
+  document.getElementById('dossier').innerHTML = html;
+  document.getElementById('dossierModalBg').classList.remove('hidden');
+
+  dossierCharts.forEach(c=>c.destroy()); dossierCharts=[];
+  const c1 = new Chart(document.getElementById('dChart1').getContext('2d'), {type:'bar',
+    data:{labels:Object.keys(byLga), datasets:[{label:'Incidents', data:Object.values(byLga), backgroundColor:'#e0533d'}]},
+    options:{responsive:false, animation:false, plugins:{legend:{display:false}}}});
+  const c2 = new Chart(document.getElementById('dChart2').getContext('2d'), {type:'line',
+    data:{labels:Object.keys(byDate).sort(), datasets:[{label:'Incidents', data:Object.keys(byDate).sort().map(d=>byDate[d]), borderColor:'#38c7b8'}]},
+    options:{responsive:false, animation:false, plugins:{legend:{display:false}}}});
+  dossierCharts.push(c1,c2);
+  setTimeout(()=>{
+    document.getElementById('dImg1').innerHTML = `<img src="${c1.toBase64Image()}" style="max-width:100%;">`;
+    document.getElementById('dImg2').innerHTML = `<img src="${c2.toBase64Image()}" style="max-width:100%;">`;
+    document.getElementById('dChart1').style.display='none'; document.getElementById('dChart2').style.display='none';
+  }, 200);
+}
+document.getElementById('printBtn').addEventListener('click', ()=>{
+  writeAudit('EXPORT_DOSSIER', 'dossier print');
+  window.print();
+});
+
+/* ================= AUDIT / CHAIN CONSOLE ================= */
+function populateAuditFilters(){
+  const opSel = document.getElementById('auditOpFilter'); if(!opSel) return;
+  const actions = ['LOGIN','LOGOUT','AUTH_FAIL','SUBMIT','DELETE','ANALYZE','COMMIT_EXTRACT','FETCH','EXPORT_JSON','EXPORT_CSV','EXPORT_DOSSIER','VIEW_INTEL','LOCK','UNLOCK','ROSTER_CHANGE'];
+  const actSel = document.getElementById('auditActionFilter');
+  if(actSel && actSel.children.length<=1) actions.forEach(a=>{ const o=document.createElement('option'); o.value=a; o.textContent=a; actSel.appendChild(o); });
+  const roster = getRoster();
+  if(opSel && opSel.children.length<=1) roster.forEach(o=>{ const opt=document.createElement('option'); opt.value=o.opId; opt.textContent=o.callsign; opSel.appendChild(opt); });
+}
+function renderLedgerIfOpen(){ if(!document.getElementById('adminPanel').classList.contains('hidden')) renderLedger(); }
+function renderLedger(){
+  populateAuditFilters();
+  const opF = document.getElementById('auditOpFilter').value;
+  const actF = document.getElementById('auditActionFilter').value;
+  const fromF = document.getElementById('auditFrom').value;
+  const toF = document.getElementById('auditTo').value;
+  let audit = getAudit();
+  if(opF) audit = audit.filter(a=>a.opId===opF);
+  if(actF) audit = audit.filter(a=>a.action===actF);
+  if(fromF) audit = audit.filter(a=>a.ts.slice(0,10)>=fromF);
+  if(toF) audit = audit.filter(a=>a.ts.slice(0,10)<=toF);
+  const chain = verifyChain();
+  const badge = document.getElementById('integrityBadge');
+  badge.textContent = chain.ok ? `✓ CHAIN INTACT (${chain.count})` : `✗ CHAIN BROKEN AT seq ${chain.brokenAt}`;
+  badge.className = 'integrity ' + (chain.ok?'ok':'bad');
+  badge.title = 'tamper-evident, not cryptographic';
+  const full = getAudit();
+  let prevValid = 'GENESIS';
+  const validity = {};
+  full.forEach(e=>{ const base={seq:e.seq,opId:e.opId,callsign:e.callsign,rank:e.rank,action:e.action,target:e.target,ts:e.ts,device:e.device,grid:e.grid,prevHash:prevValid};
+    const exp = H(prevValid+canonicalJSON(base)); validity[e.seq] = (e.hash===exp && e.prevHash===prevValid); prevValid = e.hash; });
+  const body = document.getElementById('ledgerBody'); body.innerHTML='';
+  audit.slice().reverse().forEach(e=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${e.seq}</td><td>${new Date(e.ts).toLocaleString()}</td><td>${e.callsign}</td><td>${e.action}</td><td>${e.target}</td><td>${e.hash.slice(0,10)}</td><td style="color:${validity[e.seq]?'#5fcf80':'#e0533d'}">${validity[e.seq]?'✓':'✗'}</td>`;
+    body.appendChild(tr);
+  });
+}
+['auditOpFilter','auditActionFilter','auditFrom','auditTo'].forEach(id=>{
+  document.addEventListener('change', (e)=>{ if(e.target.id===id) renderLedger(); });
+});
+document.getElementById('exportJsonBtn').addEventListener('click', ()=>{
+  writeAudit('EXPORT_JSON','ledger'); downloadFile('nsirs-ledger.json', JSON.stringify(getAudit(),null,2), 'application/json');
+});
+document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
+  writeAudit('EXPORT_CSV','ledger');
+  const rows = getAudit(); const header='seq,ts,opId,callsign,action,target,hash\n';
+  const csv = header + rows.map(r=>[r.seq,r.ts,r.opId,r.callsign,r.action,r.target,r.hash].join(',')).join('\n');
+  downloadFile('nsirs-ledger.csv', csv, 'text/csv');
+});
+function downloadFile(name, content, type){
+  const blob = new Blob([content], {type}); const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+}
+
+/* roster editor */
+function renderRosterList(){
+  const wrap = document.getElementById('rosterList'); if(!wrap) return;
+  wrap.innerHTML='';
+  getRoster().forEach(o=>{
+    const row = document.createElement('div');
+    row.className='field';
+    row.innerHTML = `<div class="mono" style="font-size:12px;">${o.opId} · ${o.callsign} · ${o.rank} · ${o.unit} · ${o.clearance} · ${o.active?'ACTIVE':'DISABLED'}</div>`;
+    const btns = document.createElement('div'); btns.style.display='flex'; btns.style.gap='6px'; btns.style.marginTop='4px';
+    const toggleBtn = document.createElement('button'); toggleBtn.className='btn'; toggleBtn.textContent = o.active?'DISABLE':'ENABLE';
+    toggleBtn.addEventListener('click', ()=>{ o.active=!o.active; const r=getRoster().map(x=>x.opId===o.opId?o:x); saveRoster(r); writeAudit('ROSTER_CHANGE', o.opId+' '+(o.active?'enabled':'disabled')); renderRosterList(); renderOpSelect(); toast('Roster updated','ok'); });
+    const resetBtn = document.createElement('button'); resetBtn.className='btn'; resetBtn.textContent='RESET PIN';
+    resetBtn.addEventListener('click', ()=>{
+      const p1 = prompt('New PIN (4-6 digits):'); if(!p1) return;
+      const p2 = prompt('Confirm new PIN:'); if(p1!==p2){ toast('PINs did not match','err'); return; }
+      o.pinHash = H(p1); const r=getRoster().map(x=>x.opId===o.opId?o:x); saveRoster(r);
+      writeAudit('ROSTER_CHANGE', o.opId+' pin reset'); toast('PIN reset','ok');
+    });
+    btns.appendChild(toggleBtn); btns.appendChild(resetBtn); row.appendChild(btns); wrap.appendChild(row);
+  });
+}
+document.getElementById('addOpBtn') && document.getElementById('addOpBtn').addEventListener('click', ()=>{
+  const callsign = prompt('Callsign:'); if(!callsign) return;
+  const rank = prompt('Rank (e.g. LT, CAPT, CMDR):')||'LT';
+  const unit = prompt('Unit:')||'—';
+  const clearance = prompt('Clearance (ADMIN/COMMAND/OBSERVER):')||'OBSERVER';
+  const pin = prompt('Initial PIN (4-6 digits):')||'0000';
+  const roster = getRoster();
+  const opId = 'OP-'+String(roster.length+1).padStart(3,'0');
+  roster.push({opId,callsign,rank,unit,clearance,pinHash:H(pin),active:true,fails:0,lockUntil:0});
+  saveRoster(roster); writeAudit('ROSTER_CHANGE', opId+' created'); renderRosterList(); renderOpSelect(); toast('Operator added','ok');
+});
+document.getElementById('exportAllBtn') && document.getElementById('exportAllBtn').addEventListener('click', ()=>{
+  const bundle = {incidents:getIncidents(), roster:getRoster(), audit:getAudit(), exportedAt:new Date().toISOString()};
+  writeAudit('EXPORT_JSON','full handover');
+  downloadFile('nsirs-handover.json', JSON.stringify(bundle,null,2), 'application/json');
+});
+document.getElementById('importAllFile') && document.getElementById('importAllFile').addEventListener('change', (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  if(!confirm('Import will merge incidents and overwrite roster/audit context. Continue?')) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    try{
+      const bundle = JSON.parse(r.result);
+      if(bundle.incidents) saveIncidents(bundle.incidents);
+      if(bundle.roster) saveRoster(bundle.roster);
+      if(bundle.audit) saveAudit(bundle.audit);
+      writeAudit('EXPORT_JSON','import applied');
+      const chain = verifyChain();
+      toast('Import complete — chain ' + (chain.ok?'intact':'BROKEN'), chain.ok?'ok':'err');
+      redrawMarkers(); renderStats(); renderLgaGrid(); renderLedger(); renderRosterList();
+    }catch(err){ toast('Invalid import file','err'); }
+  };
+  r.readAsText(f);
+});
+document.addEventListener('DOMContentLoaded', renderRosterList);
+renderRosterList();
+
+/* ================= SERVICE WORKER ================= */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+</script>
 </body>
 </html>
